@@ -1,0 +1,908 @@
+import SwiftUI
+import SwiftData
+import UserNotifications
+import CoreData
+import Combine
+
+// Tab 路由，用于工作台快捷操作跳转
+final class TabRouter: ObservableObject {
+    @Published var selectedTab: Int = 0
+}
+
+/// v2.41：快捷指令深链（gongyuguanjia://paste）——切到房源板块并唤起「新增房源」，进页面即解析剪贴板
+final class HouseImportIntent: ObservableObject {
+    static let shared = HouseImportIntent()
+    @Published var tick = 0
+    func request() { tick += 1 }
+}
+
+@main
+struct AgentToolApp: App {
+    private let mainContainer: ModelContainer
+    private let houseContainer: ModelContainer
+    private let storageWarning: String?
+    // v1.44：外部传入配置备份 json（文件 App「用其他 App 打开」）识别后的提示
+    @State private var configImportTip: String?
+    @StateObject private var tabRouter = TabRouter()
+    // v2.51：电梯码全屏展示（gongyuguanjia://elevator 与设置页预览共用）
+    @StateObject private var elevatorCodeCenter = ElevatorCodeCenter.shared
+    // b140：启动图——系统 LaunchScreen 显示静态图（不含版本号），App 首帧叠同一张图 + 动态版本号，0.5 秒内收起
+    @State private var showLaunchSplash = true
+
+    init() {
+        // 强制应用内系统控件使用中文
+        UserDefaults.standard.set(["zh-Hans", "zh_CN"], forKey: "AppleLanguages")
+        UserDefaults.standard.synchronize()
+        LocalNotificationManager.shared.configure()
+        // v2.44：房源动作通知（预热权限状态，权限被关时自动降级为页内光条）
+        HouseActionNotifier.shared.prepare()
+
+        // 房源板块数据存独立 store（Documents/备份/housekeeper.store + media 文件夹），
+        // 与主 App 经营数据（默认 default.store）完全隔离：复制「备份」「media」两个文件夹即可整体还原房源数据
+        BackupGuide.ensureExists()
+
+        // v1.40 第9点：本地根目录重建——启动时把 备份/Media 整体迁移到 Documents/media/（幂等，不丢数据）
+        MediaStore.migrateLegacyMediaIfNeeded()
+
+        // v1.13 需求16：启动时执行一次性目录迁移——旧分区备份 JSON 迁入 备份/旧版备份/，COS 配置 json 迁入 备份/CosConfig/
+        DataBackupManager.migrateLegacyDirectories()
+
+        // v1.8：先把此前「容器初始化失败时自动隔离」的主库文件找回原位（仅当当前默认 store 不存在时执行）。
+        // 防误移：目标位置已存在同名文件则不覆盖。数据找回后再正常打开，避免用户主经营数据留在隔离区。
+        Self.recoverQuarantinedStores()
+
+        // 关键：两个数据体系必须用【两个独立 ModelContainer】，不能合成一个多配置容器——
+        // iOS 17 早期版本在主 context 上查询非默认配置的模型会直接崩溃（房源板块闪退根因）。
+        // 每个容器单配置、单 store，是最稳定的 SwiftData 用法（与两个原 App 各自的行为一致）。
+        // 注意：两个容器必须一次性创建（元组赋值），避免第一个成功第二个抛错导致重复初始化崩溃。
+        do {
+            (mainContainer, houseContainer) = try Self.makePersistentContainers()
+            storageWarning = nil
+        } catch {
+            print("ModelContainer init failed: \(error)")
+            // 备份旧的store文件而不是直接删除，防止数据丢失
+            let fileManager = FileManager.default
+            if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                let backupFolder = appSupport.appendingPathComponent("backup_\(Int(Date().timeIntervalSince1970))")
+                try? fileManager.createDirectory(at: backupFolder, withIntermediateDirectories: true)
+                if let files = try? fileManager.contentsOfDirectory(at: appSupport, includingPropertiesForKeys: nil) {
+                    for file in files {
+                        let name = file.lastPathComponent
+                        if name.hasSuffix(".store") || name.hasSuffix(".store-wal") ||
+                           name.hasSuffix(".store-shm") || name.contains("AgentTool") {
+                            try? fileManager.moveItem(at: file, to: backupFolder.appendingPathComponent(name))
+                            print("Backed up: \(name)")
+                        }
+                    }
+                }
+            }
+            // 再试一次，不行就用内存模式
+            do {
+                (mainContainer, houseContainer) = try Self.makePersistentContainers()
+                storageWarning = nil
+            } catch {
+                let persistentError = error
+                print("Second init also failed: \(persistentError)")
+                // 持久库不可用时进入明确标识的临时模式，避免误以为数据已保存。
+                do {
+                    (mainContainer, houseContainer) = try Self.makeMemoryContainers()
+                    storageWarning = "本地数据库无法打开，当前为临时模式；本次新增或修改的数据不会永久保存。请先导出可用数据并重启 APP。错误：\(persistentError.localizedDescription)"
+                } catch {
+                    // v1.83：双容器全部初始化失败前的最后留痕——写崩溃日志（设置页可导出），下次启动提示异常退出
+                    CrashLogCollector.logFatal(title: "数据库与临时存储双重初始化失败", body: "错误：\(error.localizedDescription)")
+                    fatalError("数据库和临时存储均无法初始化：\(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// v1.8：找回被隔离的主库文件（此前容器初始化失败时自动移入 backup_<时间戳> 的 store 文件）。
+    /// 仅在当前默认 store 不存在时执行；目标位置已有同名文件则不覆盖。
+    private static func recoverQuarantinedStores() {
+        let fm = FileManager.default
+        guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
+        let defaultStore = appSupport.appendingPathComponent("default.store")
+        if fm.fileExists(atPath: defaultStore.path) { return }
+        let dirs = (try? fm.contentsOfDirectory(at: appSupport, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        let backups = dirs.filter {
+            guard $0.lastPathComponent.hasPrefix("backup_") else { return false }
+            return (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+        }
+        guard let newest = backups.max(by: {
+            ((try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast)
+                < ((try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast)
+        }) else { return }
+        if let files = try? fm.contentsOfDirectory(at: newest, includingPropertiesForKeys: nil) {
+            for file in files where !file.lastPathComponent.hasPrefix(".") {
+                let dest = appSupport.appendingPathComponent(file.lastPathComponent)
+                if !fm.fileExists(atPath: dest.path) {
+                    try? fm.moveItem(at: file, to: dest)
+                    print("Recovered quarantined store: \(file.lastPathComponent)")
+                }
+            }
+        }
+    }
+
+    /// 创建两个持久化 ModelContainer（主 App 经营数据 → 默认 store；房源数据 → Documents/备份/housekeeper.store）
+    private static func makePersistentContainers() throws -> (ModelContainer, ModelContainer) {
+        let mainSchema = Schema([
+            Property.self, RentMonthRecord.self, UtilityQuarterRecord.self, UtilitySettlementRecord.self, TodoItem.self,
+            DealRecord.self, MiscIncome.self, MiscExpense.self,
+            PayoutRecord.self, PayoutMonthRecord.self, PayoutUtilityRecord.self, UtilitySettlementHistory.self
+        ])
+        let houseSchema = Schema([House.self, MediaItem.self])
+        let main = try ModelContainer(for: mainSchema)
+        let house = try ModelContainer(for: houseSchema, configurations: [
+            ModelConfiguration("HouseStore", schema: houseSchema, url: DataRoot.url().appendingPathComponent("housekeeper.store"))
+        ])
+        return (main, house)
+    }
+
+    /// 内存模式兜底（两个容器均为 in-memory，重启即清空）
+    private static func makeMemoryContainers() throws -> (ModelContainer, ModelContainer) {
+        let mainSchema = Schema([
+            Property.self, RentMonthRecord.self, UtilityQuarterRecord.self, UtilitySettlementRecord.self, TodoItem.self,
+            DealRecord.self, MiscIncome.self, MiscExpense.self,
+            PayoutRecord.self, PayoutMonthRecord.self, PayoutUtilityRecord.self, UtilitySettlementHistory.self
+        ])
+        let houseSchema = Schema([House.self, MediaItem.self])
+        let main = try ModelContainer(for: mainSchema, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let house = try ModelContainer(for: houseSchema, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        return (main, house)
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            MainTabView()
+                .tint(.themeAccent)
+                .environment(\.locale, Locale(identifier: "zh_CN"))
+                .environment(\.calendar, Calendar(identifier: .gregorian))
+                .environmentObject(tabRouter)
+                .environmentObject(MeterStore.shared)
+                .environmentObject(AjkStore.shared)
+                .environmentObject(F58Store.shared)
+                .environment(\.houseModelContext, houseContainer.mainContext)
+                .alert("存储异常", isPresented: Binding(
+                    get: { storageWarning != nil },
+                    set: { _ in }
+                )) {
+                    Button("我知道了") { }
+                } message: {
+                    Text(storageWarning ?? "")
+                }
+                // v1.44：识别到外部传入的配置备份 json → 提示已导入，可去「云端配置 → 从备份文件恢复配置」还原
+                .alert("识别到配置备份", isPresented: Binding(
+                    get: { configImportTip != nil },
+                    set: { if !$0 { configImportTip = nil } }
+                )) {
+                    Button("去还原", role: .cancel) { }
+                } message: {
+                    Text(configImportTip ?? "")
+                }
+                // v1.13 需求17：其他 App 用「用其他 App 打开」把备份 zip 发过来时，复制进本地备份目录并提示去恢复
+                // v1.44：同时识别「备份配置到文件」生成的 json 配置备份——复制进 备份/CosConfig 并提示可还原
+                // v2.29：启动即拉一次云端配置（公告/更新记录/提示文案），不必等用户去同步房源
+                .task { _ = await RemoteConfig.refresh() }
+                .onOpenURL { url in
+                    // v2.41：快捷指令「复制房源 → 录进公寓管家」深链，直接跳到新增房源并解析剪贴板
+                    if url.scheme?.lowercased() == "gongyuguanjia" {
+                        // v2.51：电梯码深链——全屏展示电梯二维码（不切房源、不触导入）
+                        let host = (url.host ?? "").lowercased()
+                        let path = url.path.lowercased()
+                        if host == "elevator" || path == "/elevator" {
+                            ElevatorCodeCenter.shared.open()
+                            return
+                        }
+                        tabRouter.selectedTab = 1
+                        HouseImportIntent.shared.request()
+                        return
+                    }
+                    if url.pathExtension.lowercased() == "json",
+                       let tip = BackupImportHandler.handleIncomingConfigJSON(url) {
+                        configImportTip = tip
+                    } else {
+                        BackupImportHandler.handleIncomingZip(url)
+                    }
+                }
+                // v2.51：电梯码全屏页（URL Scheme / 设置页预览触发）
+                .fullScreenCover(isPresented: $elevatorCodeCenter.isPresenting) {
+                    ElevatorCodeFullScreenView()
+                }
+                // b140：启动图覆盖层（0.5 秒内淡出，期间挡住下层点击）
+                .overlay {
+                    if showLaunchSplash {
+                        LaunchSplashOverlay(isPresented: $showLaunchSplash)
+                            .transition(.opacity)
+                            .zIndex(1)
+                    }
+                }
+        }
+        .modelContainer(mainContainer)
+    }
+}
+
+/// b140：启动图覆盖层。
+/// - 系统 LaunchScreen（LaunchScreen.storyboard + LaunchSplash 图）先显示同一张图，保证冷启动无白屏；
+/// - App 首帧在这里叠同一张图，并动态读取 CFBundleShortVersionString 显示版本号——以后升版不用重做图；
+/// - 总时长 0.5 秒：0.44 秒开始 0.06 秒淡出，超出即移除，不阻塞主界面与启动任务。
+struct LaunchSplashOverlay: View {
+    @Binding var isPresented: Bool
+
+    private var versionText: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        return v.isEmpty ? "" : "v\(v)"
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .top) {
+                Image("LaunchSplash")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                Text(versionText)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(Color(red: 0.431, green: 0.518, blue: 0.451))
+                    .padding(.top, geo.size.height * 0.5475)
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .ignoresSafeArea()
+        .background(Color(red: 0.9686, green: 0.9608, blue: 0.9412))
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.44) {
+                withAnimation(.linear(duration: 0.06)) {
+                    isPresented = false
+                }
+            }
+        }
+    }
+}
+
+/// v1.13 需求17：外部 zip 备份导入处理（系统「用其他 App 打开」→ 公寓管家）
+enum BackupImportHandler {
+    /// 把外部传来的 zip 复制到 备份/Backups/ 目录；成功后弹提示（含路径说明）
+    /// 文件名冲突自动追加 -2、-3…；非 zip 或复制失败时仅打印日志（不打断用户）
+    static func handleIncomingZip(_ url: URL) {
+        let isScoped = url.startAccessingSecurityScopedResource()
+        defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
+
+        // 只处理 zip（含以 .zip 结尾的文件）
+        guard url.pathExtension.lowercased() == "zip" else {
+            print("导入跳过：非 zip 文件 \(url.lastPathComponent)")
+            return
+        }
+        let fm = FileManager.default
+        // 外部传进来的文件往往在临时 Inbox 里，先读到内存再写目标目录（避免直接 move 跨容器失败）
+        guard let data = try? Data(contentsOf: url) else {
+            print("导入失败：无法读取文件 \(url.lastPathComponent)")
+            return
+        }
+        // 校验 zip 魔数（PK\x03\x04），防止把无关文件当备份
+        guard data.count >= 4, Array(data.prefix(4)) == [0x50, 0x4B, 0x03, 0x04] else {
+            print("导入失败：文件不是有效 ZIP \(url.lastPathComponent)")
+            return
+        }
+        let destDir = BackupV5Manager.backupsDirectory
+        var destName = url.lastPathComponent
+        var candidate = destDir.appendingPathComponent(destName)
+        var n = 2
+        while fm.fileExists(atPath: candidate.path) {
+            destName = "\(url.deletingPathExtension().lastPathComponent)-\(n).zip"
+            candidate = destDir.appendingPathComponent(destName)
+            n += 1
+        }
+        do {
+            try data.write(to: candidate, options: .atomic)
+            // 复制成功后通知（传文件名，App 弹「立即恢复/稍后再说」二级确认；v1.14 需求2）
+            NotificationCenter.default.post(name: .backupZipImported, object: destName)
+            BackupLogStore.log(category: "备份", action: "导入外部备份", result: "成功", detail: destName)
+        } catch {
+            print("导入失败：写入备份目录出错 \(error.localizedDescription)")
+            BackupLogStore.log(category: "备份", action: "导入外部备份", result: "失败", detail: error.localizedDescription)
+        }
+    }
+
+    /// v1.44：外部传入「备份配置到文件」生成的 json 配置备份（文件 App → 用其他 App 打开 → 公寓管家）。
+    /// 识别：内容含 bucket / secretId 等配置字段 → 复制进 备份/CosConfig/ 目录 → 返回提示文本（App 弹窗）；
+    /// 非配置 json 返回 nil（忽略，不打断用户）。
+    static func handleIncomingConfigJSON(_ url: URL) -> String? {
+        let isScoped = url.startAccessingSecurityScopedResource()
+        defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
+
+        guard url.pathExtension.lowercased() == "json" else { return nil }
+        guard let data = try? Data(contentsOf: url),
+              let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            print("配置导入跳过：无法解析 json \(url.lastPathComponent)")
+            return nil
+        }
+        let hasConfigFields = !(parsed["bucket"] as? String ?? "").isEmpty
+            && !(parsed["secretId"] as? String ?? "").isEmpty
+        guard hasConfigFields else {
+            print("配置导入跳过：不是配置备份 \(url.lastPathComponent)")
+            return nil
+        }
+        let fm = FileManager.default
+        let destDir = CosConfigStore.directory()
+        try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
+        var destName = url.lastPathComponent
+        var candidate = destDir.appendingPathComponent(destName)
+        var n = 2
+        while fm.fileExists(atPath: candidate.path) {
+            let stem = url.deletingPathExtension().lastPathComponent
+            destName = "\(stem)-\(n).json"
+            candidate = destDir.appendingPathComponent(destName)
+            n += 1
+        }
+        do {
+            try data.write(to: candidate, options: .atomic)
+            BackupLogStore.log(category: "配置", action: "导入配置备份", result: "成功", detail: destName)
+            return "已识别到配置备份文件并导入：\(destName)\n\n请到「设置 → 云端配置 → 从备份文件恢复配置」选择它即可一键还原存储桶 / 地域 / 密钥 / 云函数地址。"
+        } catch {
+            print("配置导入失败：写入目录出错 \(error.localizedDescription)")
+            BackupLogStore.log(category: "配置", action: "导入配置备份", result: "失败", detail: error.localizedDescription)
+            return nil
+        }
+    }
+}
+
+// 房源板块专用 ModelContext（独立 HouseStore 容器）。
+// 主 App 页面继续用主容器的 @Environment(\.modelContext)；房源页面用 houseModelContext。
+private struct HouseModelContextKey: EnvironmentKey {
+    static let defaultValue: ModelContext? = nil
+}
+
+extension EnvironmentValues {
+    var houseModelContext: ModelContext? {
+        get { self[HouseModelContextKey.self] }
+        set { self[HouseModelContextKey.self] = newValue }
+    }
+}
+
+// 自定义6个Tab的底部导航
+struct MainTabView: View {
+    @EnvironmentObject private var tabRouter: TabRouter
+    @Environment(\.modelContext) private var modelContext
+    // v1.12：自动备份快速备份需要房源容器（保存快照中的房源 JSON）
+    @Environment(\.houseModelContext) private var houseModelContext
+    // v2.22：在线更新——启动检查到新版本弹一次窗（开关关掉就不查）
+    @ObservedObject private var updateCenter = UpdateCenter.shared
+    @State private var showUpdateDetailFromPopup = false
+    // v1.83：上次异常退出提示（检测到崩溃日志时弹一次，设置页可查看/导出）
+    @State private var showCrashTip = false
+
+    private let tabs = [
+        (title: "工作台", icon: "house.fill"),
+        (title: "房源", icon: "building.2.fill"),
+        (title: "成交", icon: "doc.text.fill"),
+        (title: "收租", icon: "creditcard.fill"),
+        (title: "包租", icon: "arrow.up.circle.fill"),
+        (title: "汇总", icon: "chart.pie.fill"),
+        (title: "设置", icon: "gearshape.fill")
+    ]
+
+    @State private var visitedTabs: Set<Int> = [0]
+    @State private var automaticBackupMessage: String?
+    // v1.13 需求17 / v1.14 需求2：外部 zip 导入 → 二级确认恢复（立即恢复 / 稍后再说），恢复完成弹窗带口径
+    @State private var importedZipName: String?
+    @State private var importedZipMessage: String?
+    @State private var showImportedRestoreConfirm = false
+    @State private var isRestoringImported = false
+    @State private var importRestoreProgress: Double = 0
+    @State private var importRestoreStage = ""
+    @State private var importRestoreStats: RestoreStatsV5?
+    @State private var importRestoreError: String?
+    @State private var isCheckingAutomaticBackup = false
+    /// v2.9：自动备份定时器改为条件启动——仅在设置中开启「自动备份」时才创建（每 2 分钟检查一次到点与否），
+    /// 未开启时不存在定时器，避免 30 秒常驻轮询耗电；开启/关闭自动备份时由 refreshAutoBackupTimer() 重建/取消。
+    @State private var autoBackupTimerCancellable: AnyCancellable?
+
+    init() {
+        // v1.7：去掉系统导航栏底部阴影分隔线（所有板块顶部与滚动后都不再出现系统横线）；
+        // 设置页需要的「滚动后才显示」分隔线由 SettingsView 用滚动检测 overlay 动态绘制
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithOpaqueBackground()
+        navAppearance.backgroundColor = UIColor(Color.themeBg)
+        navAppearance.titleTextAttributes = [.foregroundColor: UIColor(Color.themeText)]
+        navAppearance.shadowColor = .clear
+        UINavigationBar.appearance().standardAppearance = navAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
+    }
+
+    // v1.40 修复:拆分 body 表达式避免 type-check 超时(7个条件视图+底部导航组合过重)
+    @ViewBuilder
+    private var tabContent: some View {
+        ZStack {
+            Color.themeBg.ignoresSafeArea()
+            if visitedTabs.contains(0) {
+                DashboardView(isActive: tabRouter.selectedTab == 0)
+                    .opacity(tabRouter.selectedTab == 0 ? 1 : 0)
+                    .disabled(tabRouter.selectedTab != 0)
+            }
+            if visitedTabs.contains(1) {
+                HouseListView()
+                    .opacity(tabRouter.selectedTab == 1 ? 1 : 0)
+                    .disabled(tabRouter.selectedTab != 1)
+            }
+            if visitedTabs.contains(2) {
+                DealsView()
+                    .opacity(tabRouter.selectedTab == 2 ? 1 : 0)
+                    .disabled(tabRouter.selectedTab != 2)
+            }
+            if visitedTabs.contains(3) {
+                RentCollectionView()
+                    .opacity(tabRouter.selectedTab == 3 ? 1 : 0)
+                    .disabled(tabRouter.selectedTab != 3)
+            }
+            if visitedTabs.contains(4) {
+                PayoutView()
+                    .opacity(tabRouter.selectedTab == 4 ? 1 : 0)
+                    .disabled(tabRouter.selectedTab != 4)
+            }
+            if visitedTabs.contains(5) {
+                ProfitView()
+                    .opacity(tabRouter.selectedTab == 5 ? 1 : 0)
+                    .disabled(tabRouter.selectedTab != 5)
+            }
+            if visitedTabs.contains(6) {
+                SettingsView()
+                    .opacity(tabRouter.selectedTab == 6 ? 1 : 0)
+                    .disabled(tabRouter.selectedTab != 6)
+            }
+        }
+    }
+
+    private var bottomBar: some View {
+        VStack(spacing: 0) {
+            Divider().background(Color.themeBorder)
+            HStack(spacing: 0) {
+                ForEach(0..<tabs.count, id: \.self) { index in
+                    Button {
+                        tabRouter.selectedTab = index
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: tabs[index].icon)
+                                .font(.system(size: 18))
+                            Text(tabs[index].title)
+                                .font(.system(size: 10))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 6)
+                        .padding(.bottom, 6)
+                        .foregroundColor(tabRouter.selectedTab == index ? .themeAccent : .themeText3)
+                    }
+                }
+            }
+            .background(Color.themePanel)
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 混合方案：已访问的板块保持渲染（用opacity隐藏，保留滚动位置），未访问的不渲染
+            tabContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: tabRouter.selectedTab) { _, newTab in
+                    visitedTabs.insert(newTab)
+                    WidgetDataSync.sync(modelContext: modelContext)
+                }
+
+            // 底部导航
+            bottomBar
+            // v1.71（#95）：全局提示遮罩——完成/错误提示离开任何板块都能点「好」
+            GlobalAlertOverlay()
+        }
+        // v2.44：通知权限被关闭时的顶部兜底光条
+        .overlay(alignment: .top) { HouseNoticeBannerOverlay() }
+        .overlay {
+            if let a = updateCenter.available, updateCenter.launchPopupVersion != nil {
+                UpdateLaunchPopup(
+                    update: a,
+                    onUpdate: {
+                        updateCenter.dismissLaunchPopup()
+                        showUpdateDetailFromPopup = true
+                    },
+                    onLater: { updateCenter.dismissLaunchPopup() }
+                )
+            }
+        }
+        .sheet(isPresented: $showUpdateDetailFromPopup) {
+            if let a = updateCenter.available { UpdateDetailView(update: a) }
+        }
+        .onAppear {
+            // v1.80：远程配置——先读本地缓存（断网可用），再异步拉取云端最新（联网更新缓存）
+            RemoteConfig.loadCache()
+            // v2.21：每次进 App 都检查一次更新——先按本地缓存判断（离线也能显示），
+            // 再复用同一次 config.json 拉取完成在线检查，不额外发请求。
+            UpdateCenter.shared.evaluate()
+            if UpdateCenter.autoCheckEnabled {
+                Task { await UpdateCenter.shared.checkOnLaunch() }
+            }
+            // v1.83：上次异常退出提示（崩溃日志存在时弹一次；设置→崩溃日志可导出定位）
+            // v1.95：改为只对【新增】的崩溃日志弹一次——用 UserDefaults 记录上次已提示的最新日志文件名，
+            // 相同日志不再重复弹窗（此前每次启动只要有日志就弹，用户反馈每次打开都弹）
+            if let newestCrash = CrashLogCollector.logFiles().first {
+                let shownKey = "crashTip.lastShownLog"
+                let lastShown = UserDefaults.standard.string(forKey: shownKey)
+                if lastShown != newestCrash.lastPathComponent {
+                    showCrashTip = true
+                    UserDefaults.standard.set(newestCrash.lastPathComponent, forKey: shownKey)
+                }
+            }
+            UNUserNotificationCenter.current().setBadgeCount(0)
+            // v1.12：启动时安装崩溃日志、同步日志桥、清理恢复残留、重试未上传的云端备份
+            CrashLogCollector.install()
+            BackupV5Manager.cleanupPreRestoreResidue()
+            // v1.95：电表全局盯防定时器（设置里开启「定时自动刷新」后 App 前台按间隔自动刷新电表）
+            MeterStore.shared.startAutoRefreshIfNeeded()
+            refreshAutoBackupTimer()
+            checkAutoBackup()
+            Task { await CloudBackupService.retryPendingUploads() }
+            Task { await CloudBackupService.enforceCloudRetention() }
+            // 任务中心：启动迁移旧失败/旧队列，进行中残留转待处理；重试只允许手动点，不再自动补传
+            if let houseModelContext {
+                TaskRetryPerformer.shared.bind(houseContext: houseModelContext)
+            }
+            SyncTaskCenter.shared.bootstrap()
+            // v2.45：历史日志一次性迁移到各房账本（幂等），随后合并上传待同步账本
+            // v2.46：把真实房源的房号集合传入，用于清理误建的畸形媒体目录
+            let validRoomKeys: Set<String> = {
+                guard let ctx = houseModelContext,
+                      let houses = try? ctx.fetch(FetchDescriptor<House>()) else { return [] }
+                return Set(houses.filter { !$0.isTrashed }.map { $0.mediaRoomKey })
+            }()
+            HouseLedgerMigrator.run(validRoomKeys: validRoomKeys)
+            // v2.47：清理历史账本里残留的笼统动作（如「媒体更新」），本地云端同清
+            HouseLedgerDeprecatedCleanup.run()
+            Task {
+                if let config = CosConfig.load(), config.isValid {
+                    await HouseLedgerStore.syncAll(roomKeys: HouseLedgerStore.dirtyRoomKeys(), config: config)
+                }
+            }
+            // b118（清单12：打开 App 轻量变更感知）：启动时轻量探测云端房源账本是否有变化
+            // v2.62（A3）：同时记下「最近一次前台检测时间」，避免启动瞬间的 didBecomeActive 再补一次检测
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "cloudDetectLastForegroundAt")
+            detectCloudLedgerChange()
+            LocalNotificationManager.shared.deliverMissedNotifications()
+            LocalNotificationManager.shared.rebuildAll(modelContext: modelContext)
+            WidgetDataSync.sync(modelContext: modelContext)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            UNUserNotificationCenter.current().setBadgeCount(0)
+            LocalNotificationManager.shared.configure()
+            LocalNotificationManager.shared.deliverMissedNotifications()
+            LocalNotificationManager.shared.rebuildAll(modelContext: modelContext)
+            checkAutoBackup()
+            // v1.12：回前台重试未上传的云端备份
+            Task { await CloudBackupService.retryPendingUploads() }
+            // 房源媒体不再自动补传：失败任务留在任务中心，由用户手动点重试
+            // v2.45：回前台合并上传待同步账本
+            Task {
+                if let config = CosConfig.load(), config.isValid {
+                    await HouseLedgerStore.syncAll(roomKeys: HouseLedgerStore.dirtyRoomKeys(), config: config)
+                }
+            }
+            // b118（清单12）：回前台同样做轻量变更感知
+            // v2.62（A3）：加 5 分钟门槛——锁屏解锁也会触发 didBecomeActive，
+            // 不设门槛会变成「一解锁就检测」；5 分钟内重复回前台直接跳过。
+            let nowForeground = Date().timeIntervalSince1970
+            let lastForegroundAt = UserDefaults.standard.double(forKey: "cloudDetectLastForegroundAt")
+            if nowForeground - lastForegroundAt >= 300 {
+                UserDefaults.standard.set(nowForeground, forKey: "cloudDetectLastForegroundAt")
+                detectCloudLedgerChange()
+            }
+            WidgetDataSync.sync(modelContext: modelContext)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
+            // v1.83：任何 ModelContext 保存（记账/房源/待办等）后才重建本地通知与小组件数据，替代原来的 30 秒轮询
+            // 注：SwiftData 的 ModelContext 底层即 CoreData context，didSave 通知名即 NSManagedObjectContextDidSave
+            LocalNotificationManager.shared.rebuildAll(modelContext: modelContext)
+            WidgetDataSync.sync(modelContext: modelContext)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .autoBackupSettingsChanged)) { _ in
+            // v2.9：设置变更后按 enabled 重建/取消 2 分钟定时器，再立即检查是否到点
+            refreshAutoBackupTimer()
+            checkAutoBackup()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: LocalNotificationManager.navigationNotification)) { note in
+            if let tab = note.userInfo?["tab"] as? Int { tabRouter.selectedTab = tab; visitedTabs.insert(tab) }
+        }
+        .overlay {
+            Color.clear.frame(width: 1, height: 1)
+                .alert("自动备份成功", isPresented: Binding(
+                    get: { automaticBackupMessage != nil },
+                    set: { if !$0 { automaticBackupMessage = nil } }
+                )) {
+                    Button("知道了", role: .cancel) { automaticBackupMessage = nil }
+                } message: {
+                    Text(automaticBackupMessage ?? "")
+                }
+                .alert("上次异常退出", isPresented: $showCrashTip) {
+                    Button("知道了", role: .cancel) { }
+                } message: {
+                    Text("App 上次运行时意外退出，已自动记录崩溃日志。你可以在「设置 → 崩溃日志」查看或导出，帮助排查原因。")
+                }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .backupZipImported)) { note in
+            // v1.14 需求2：导入成功后弹「立即恢复 / 稍后再说」二级确认
+            if let name = note.object as? String {
+                importedZipName = name
+                importedZipMessage = "已导入备份「\(name)」到本地备份文件夹。\n立即恢复会用这份备份覆盖当前全部数据；也可稍后到「设置 → 备份与安全 → 备份文件管理」查看并恢复。"
+            }
+        }
+        .overlay { importedRestoreFlow }
+    }
+
+    /// v1.14 需求2：外部导入恢复的全部弹层合并进单一 overlay（拆分独立属性，避免 body 单一表达式 type-check 超时）
+    @ViewBuilder private var importedRestoreFlow: some View {
+        ZStack {
+            Color.clear.frame(width: 1, height: 1)
+                .alert("已导入备份", isPresented: Binding(
+                    get: { importedZipMessage != nil },
+                    set: { if !$0 { importedZipMessage = nil } }
+                )) {
+                    Button("立即恢复") { showImportedRestoreConfirm = true }
+                    Button("稍后再说", role: .cancel) { importedZipMessage = nil; importedZipName = nil }
+                } message: {
+                    Text(importedZipMessage ?? "")
+                }
+            Color.clear.frame(width: 1, height: 1)
+                .confirmationDialog("用这个备份恢复？", isPresented: $showImportedRestoreConfirm, titleVisibility: .visible) {
+                    Button("恢复", role: .destructive) { startImportedRestore() }
+                    Button("取消", role: .cancel) { showImportedRestoreConfirm = false }
+                } message: {
+                    Text("将用刚导入的「\(importedZipName ?? "")」覆盖当前全部数据。恢复前会自动打包当前数据做安全备份，失败自动还原；成功后再清理。")
+                }
+            if isRestoringImported {
+                VStack(spacing: 12) {
+                    ProgressView(value: importRestoreProgress)
+                        .progressViewStyle(.linear)
+                        .frame(width: 220)
+                    Text(importRestoreStage)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+                .padding(20)
+                .background(Color.themeBg.opacity(0.95))
+                .cornerRadius(12)
+                .shadow(radius: 8)
+            }
+            // v1.15 需求3：导入恢复完成改 overlay 卡片（与备份中心一致；iOS 17 alert message 多行 VStack 渲染不全）
+            if let stats = importRestoreStats, importRestoreError == nil {
+                ZStack {
+                    Color.black.opacity(0.35).ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        Text("恢复完成")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(stats.summaryLines, id: \.self) { line in
+                                Text(line)
+                                    .font(.subheadline)
+                                    .foregroundColor(.white)
+                            }
+                            Text("全部核对无误")
+                                .font(.subheadline)
+                                .foregroundColor(.green)
+                            Text("恢复来源：外部导入的备份")
+                                .font(.footnote)
+                                .foregroundColor(.white.opacity(0.85))
+                            Text("恢复前的安全备份已自动清理")
+                                .font(.footnote)
+                                .foregroundColor(.white.opacity(0.85))
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        Button("好") {
+                            importRestoreStats = nil
+                        }
+                        .font(.subheadline)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 8)
+                        .background(Color.white)
+                        .foregroundColor(.black)
+                        .clipShape(Capsule())
+                    }
+                    .padding(20)
+                    .frame(maxWidth: 320)
+                    .background(Color.black.opacity(0.75))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+            }
+            Color.clear.frame(width: 1, height: 1)
+                .alert("恢复失败", isPresented: Binding(
+                    get: { importRestoreError != nil },
+                    set: { if !$0 { importRestoreError = nil } }
+                )) {
+                    Button("好", role: .cancel) {}
+                } message: {
+                    Text(importRestoreError ?? "")
+                }
+        }
+    }
+
+    /// b118（清单12：打开 App 轻量变更感知）：启动/回前台时轻量探测云端房源账本是否有变化。
+    /// 只列一次 h/ 桶目录（对象名+大小+修改时间，不下载任何内容），与本地基线对比；
+    /// 变更感知（清单1）：App 启动/回前台检测「本地 vs 云端」两端是否有差异——
+    /// 判定机制与「同步云端房源」按钮完全一致（云端账本 fetchAll + 字段级对比 + 房号集合差），
+    /// 有变化 → 写持久化标记 cloudLedgerPendingHint + 广播通知（房源页收到后顶部横幅提示「检测到云端有更新，请同步」），
+    /// 无变化不提示；启动时不在房源页（通知无人接收）也不丢提示，进入房源页 onAppear 兜底消费标记。
+    /// b120：检测签名增加本地容器参数（App 侧传 houseModelContext），与列表页 onAppear 同口径双端对比，
+    ///        弃用云端快照基线（cloudLedgerBaseline.v1）——解决上一版「云端基线已最新 → 此后永远不提示」的失效。
+    private func detectCloudLedgerChange() {
+        Task {
+            // v2.9（P1-1）：仅「云端有更新」广播提示；检测失败/无变化不广播（失败态由房源列表页 onAppear 单独提示）
+            let state = await HouseListView.detectCloudLedgerChange(houseContext: houseModelContext)
+            // v2.62（B3）：检测完顺手补写积压的清单改动（队列为空时直接返回，不发请求）
+            await CloudManifestUpdater.shared.flush()
+            guard state == .hasUpdate else { return }
+            UserDefaults.standard.set(true, forKey: "cloudLedgerPendingHint")
+            NotificationCenter.default.post(name: HouseListView.cloudLedgerChangedLight, object: nil)
+        }
+    }
+
+    /// v1.14 需求2：外部导入备份的「立即恢复」——与查看备份页一致：安全快照 → 导入 → 分行统计
+    private func startImportedRestore() {
+        guard let name = importedZipName else { return }
+        guard let houseCtx = houseModelContext else {
+            importRestoreError = "房源数据容器不可用"
+            return
+        }
+        let url = BackupV5Manager.backupsDirectory.appendingPathComponent(name)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            importRestoreError = "导入的备份文件不存在：\(name)"
+            return
+        }
+        isRestoringImported = true
+        importRestoreProgress = 0
+        importRestoreStage = "正在校验备份…"
+        Task {
+            do {
+                let stats = try await BackupV5Manager.restore(
+                    zipURL: url, mainContext: modelContext, houseContext: houseCtx,
+                    phaseProgress: { p in Task { @MainActor in self.importRestoreProgress = p } },
+                    stageMessage: { s in Task { @MainActor in self.importRestoreStage = s } }
+                )
+                await MainActor.run {
+                    isRestoringImported = false
+                    importRestoreStats = stats
+                    BackupLogStore.log(category: "恢复", action: "外部导入恢复", result: "成功", detail: stats.summaryLines.joined(separator: " / ") + "；来源：外部导入备份")
+                }
+            } catch {
+                await MainActor.run {
+                    isRestoringImported = false
+                    importRestoreError = error.localizedDescription
+                    BackupLogStore.log(category: "恢复", action: "外部导入恢复", result: "失败", detail: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    // 自动补偿备份：启动和回前台时检查最近一个计划时间槽（v1.12 改造：自动备份 = 快速备份 + 自动上传云端）。
+    // D2 方案保留：到点 App 不在前台不备份，下次打开时按 latestDueSlot 自动补做；过点不丢。
+
+
+    /// v2.9：按「设置 → 自动备份」开关创建或取消 2 分钟定时器（未启用自动备份则不启动定时器）
+    private func refreshAutoBackupTimer() {
+        autoBackupTimerCancellable?.cancel()
+        autoBackupTimerCancellable = nil
+        guard autoBackupEnabled() else { return }
+        autoBackupTimerCancellable = Timer.publish(every: 120, on: .main, in: .common).autoconnect()
+            .sink { _ in checkAutoBackup() }
+    }
+
+    private func autoBackupEnabled() -> Bool {
+        guard let data = UserDefaults.standard.data(forKey: "autoBackupSettings"),
+              let settings = try? JSONDecoder().decode(AutoBackupSettings.self, from: data) else { return false }
+        return settings.enabled
+    }
+
+    private func checkAutoBackup() {
+        guard !isCheckingAutomaticBackup else { return }
+        guard let data = UserDefaults.standard.data(forKey: "autoBackupSettings"),
+              var settings = try? JSONDecoder().decode(AutoBackupSettings.self, from: data), settings.enabled else { return }
+        isCheckingAutomaticBackup = true
+        defer { isCheckingAutomaticBackup = false }
+        let calendar = Calendar.current
+        let now = Date()
+        guard let dueSlot = latestDueSlot(settings: settings, now: now, calendar: calendar) else { return }
+        let slotKey = ISO8601DateFormatter().string(from: dueSlot)
+        let defaults = UserDefaults.standard
+        // v1.12：检查 Backups 目录中是否已有该槽位的自动快速备份（快速_*_自动.zip 且修改时间 ≥ 到期槽）
+        let existingAutoBackup = BackupV5Manager.listLocalBackups().contains { url in
+            guard url.lastPathComponent.hasPrefix("快速_") && url.lastPathComponent.contains("_自动") else { return false }
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return modified >= dueSlot
+        }
+        if existingAutoBackup {
+            defaults.set(slotKey, forKey: "autoBackupCompletedSlot")
+            if settings.lastBackupDate == nil || settings.lastBackupDate! < dueSlot {
+                settings.lastBackupDate = now
+                if let updated = try? JSONEncoder().encode(settings) { defaults.set(updated, forKey: "autoBackupSettings") }
+            }
+            return
+        }
+        // 执行自动快速备份（需房源容器）
+        guard let houseCtx = houseModelContext else { return }
+        if let url = BackupV5Manager.createFastBackup(mainContext: modelContext, houseContext: houseCtx, isAuto: true, date: now) {
+            settings.lastBackupDate = now
+            if let updated = try? JSONEncoder().encode(settings) { defaults.set(updated, forKey: "autoBackupSettings") }
+            defaults.set(slotKey, forKey: "autoBackupCompletedSlot")
+            defaults.synchronize()
+            BackupLogStore.log(category: "备份", action: "自动快速备份", result: "成功", detail: url.lastPathComponent, checksum: BackupV5Manager.sha1OfFile(at: url) ?? "")
+            // 自动上传云端（后台；失败入队下次重试）
+            Task {
+                await CloudBackupService.autoUploadFastBackup(zipURL: url, config: nil)
+                await MainActor.run {
+                    automaticBackupMessage = "自动备份成功：\(url.lastPathComponent)\n" + CloudBackupService.uploadState(of: url.lastPathComponent)
+                }
+            }
+            // 按保留天数清理旧自动备份（v1.12：只清理自动快速备份，手动备份不参与）
+            cleanupAutoFastBackups(days: retentionDays())
+        } else {
+            DispatchQueue.main.async {
+                automaticBackupMessage = "自动备份失败：请检查存储空间后重试"
+            }
+            BackupLogStore.log(category: "备份", action: "自动快速备份", result: "失败", detail: "存储空间或导出失败")
+        }
+    }
+
+    /// v1.12：自动备份保留天数（默认 7 天，设置页可调）
+    private func retentionDays() -> Int {
+        let days = UserDefaults.standard.integer(forKey: "autoBackupRetentionDays")
+        return days > 0 ? days : 7
+    }
+
+    /// v1.12：清理 Backups 目录中超过保留天数的自动快速备份（手动备份不参与）
+    private func cleanupAutoFastBackups(days: Int) {
+        let fileManager = FileManager.default
+        let folder = BackupV5Manager.backupsDirectory
+        guard let files = try? fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.creationDateKey]) else { return }
+        let calendar = Calendar.current
+        let cutoffDate = calendar.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        for file in files {
+            let filename = file.lastPathComponent
+            if filename.hasPrefix("快速_") && filename.contains("_自动") && filename.hasSuffix(".zip") {
+                if let attributes = try? fileManager.attributesOfItem(atPath: file.path),
+                   let creationDate = attributes[.creationDate] as? Date,
+                   creationDate < cutoffDate {
+                    try? fileManager.removeItem(at: file)
+                    print("已删除旧自动备份: \(filename)")
+                }
+            }
+        }
+    }
+
+    private func latestDueSlot(settings: AutoBackupSettings, now: Date, calendar: Calendar) -> Date? {
+        let hour = min(max(settings.hour, 0), 23)
+        let minute = min(max(settings.minute, 0), 59)
+        let today = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: now) ?? now
+        switch settings.frequency {
+        case "week":
+            let weekday = calendar.component(.weekday, from: settings.lastBackupDate ?? now)
+            var c = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
+            c.weekday = weekday; c.hour = hour; c.minute = minute; c.second = 0
+            guard let candidate = calendar.date(from: c) else { return nil }
+            return candidate <= now ? candidate : calendar.date(byAdding: .weekOfYear, value: -1, to: candidate)
+        case "month":
+            let preferredDay = calendar.component(.day, from: settings.lastBackupDate ?? now)
+            let maxDay = calendar.range(of: .day, in: .month, for: now)?.count ?? 28
+            var c = calendar.dateComponents([.year, .month], from: now)
+            c.day = min(preferredDay, maxDay); c.hour = hour; c.minute = minute; c.second = 0
+            guard let candidate = calendar.date(from: c) else { return nil }
+            return candidate <= now ? candidate : calendar.date(byAdding: .month, value: -1, to: candidate)
+        default:
+            return today <= now ? today : calendar.date(byAdding: .day, value: -1, to: today)
+        }
+    }
+}
+
+
+extension Notification.Name {
+    static let autoBackupSettingsChanged = Notification.Name("autoBackupSettingsChanged")
+    /// v1.13 需求17：外部 zip 导入完成（object = 提示文案 String）
+    static let backupZipImported = Notification.Name("backupZipImported")
+}

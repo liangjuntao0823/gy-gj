@@ -1,0 +1,735 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000010000000000000001 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000001 /* App.swift */; };
+		A10000010000000000000002 /* Property.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000002 /* Property.swift */; };
+		A10000010000000000000003 /* DealRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000003 /* DealRecord.swift */; };
+		A10000010000000000000004 /* PayoutRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000004 /* PayoutRecord.swift */; };
+		A10000010000000000000005 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000005 /* DataManager.swift */; };
+		A10000010000000000000006 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000006 /* DashboardView.swift */; };
+		A10000010000000000000025 /* TodoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000025 /* TodoViews.swift */; };
+		A10000010000000000000007 /* DealsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000007 /* DealsView.swift */; };
+		A10000010000000000000008 /* RentCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000008 /* RentCollectionView.swift */; };
+		A10000010000000000000009 /* PayoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000009 /* PayoutView.swift */; };
+		A10000010000000000000010 /* ProfitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000010 /* ProfitView.swift */; };
+		A10000010000000000000095 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000095 /* SettingsView.swift */; };
+		A10000010000000000000096 /* DataBackupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000096 /* DataBackupManager.swift */; };
+		A30000010000000000000001 /* LocalNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000010000000000000001 /* LocalNotificationManager.swift */; };
+		A10000010000000000000011 /* UtilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000011 /* UtilityView.swift */; };
+	A10000010000000000000119 /* RentStatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000119 /* RentStatView.swift */; };
+		A10000010000000000000015 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000015 /* Theme.swift */; };
+		A10000010000000000000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000012 /* Assets.xcassets */; };
+		LSB0000000000000000000001 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = LSR0000000000000000000001 /* LaunchScreen.storyboard */; };
+		A10000010000000000000116 /* CloudDeployPackage.zip in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000116 /* CloudDeployPackage.zip */; };
+		A20000010000000000000003 /* MigrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000003 /* MigrationView.swift */; };
+		C20000010000000000000001 /* PlanEditors.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000010000000000000002 /* PlanEditors.swift */; };
+		A10000010000000000000013 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000013 /* Preview Assets.xcassets */; };
+		WA /* WidgetDataSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = WB /* WidgetDataSync.swift */; };
+		W1 /* AgentToolWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = W2 /* AgentToolWidget.swift */; };
+		W3 /* AgentToolWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = W4 /* AgentToolWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A10000010000000000000099 /* TrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000099 /* TrashView.swift */; };
+		A10000010000000000000100 /* House.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000100 /* House.swift */; };
+		A10000010000000000000101 /* CosUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000101 /* CosUploader.swift */; };
+		A10000010000000000000102 /* MediaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000102 /* MediaStore.swift */; };
+		A10000010000000000000199 /* RemoteConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000199 /* RemoteConfig.swift */; };
+		A10000010000000000000201 /* RemoteConfigAdminView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000201 /* RemoteConfigAdminView.swift */; };
+		A10000010000000000000103 /* HouseComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000103 /* HouseComponents.swift */; };
+		A10000010000000000000104 /* HouseDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000104 /* HouseDetailView.swift */; };
+		A10000010000000000000105 /* HouseEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000105 /* HouseEditView.swift */; };
+		A10000010000000000000106 /* HouseListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000106 /* HouseListView.swift */; };
+		A10000010000000000000118 /* HouseBatchImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000118 /* HouseBatchImportView.swift */; };
+		A10000010000000000000107 /* HouseSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000107 /* HouseSettingsView.swift */; };
+		A10000010000000000000108 /* BackupLogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000108 /* BackupLogStore.swift */; };
+		A10000010000000000000109 /* BackupV5Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000109 /* BackupV5Manager.swift */; };
+		A10000010000000000000110 /* CloudBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000110 /* CloudBackupService.swift */; };
+		A10000010000000000000111 /* CrashLogCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000111 /* CrashLogCollector.swift */; };
+		A10000010000000000000112 /* ZipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000112 /* ZipStore.swift */; };
+		A10000010000000000000113 /* BackupCenterViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000113 /* BackupCenterViews.swift */; };
+		A10000010000000000000114 /* HouseMediaUploadQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000114 /* HouseMediaUploadQueue.swift */; };
+		A10000010000000000000301 /* MediaActivityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000301 /* MediaActivityGate.swift */; };
+		A10000010000000000000302 /* HouseSyncGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000302 /* HouseSyncGuard.swift */; };
+		A10000010000000000000303 /* HouseClipboardImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000303 /* HouseClipboardImport.swift */; };
+		A10000010000000000000304 /* HouseActionNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000304 /* HouseActionNotifier.swift */; };
+		A10000010000000000000305 /* HouseLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000305 /* HouseLedger.swift */; };
+		A10000010000000000000306 /* HouseLedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000306 /* HouseLedgerView.swift */; };
+		A10000010000000000000117 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000117 /* NetworkMonitor.swift */; };
+		A10000010000000000000140 /* MediaPendingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000140 /* MediaPendingView.swift */; };
+		A10000010000000000000141 /* SyncTaskCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000141 /* SyncTaskCenter.swift */; };
+		A10000010000000000000401 /* HouseUploadRollbacker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000401 /* HouseUploadRollbacker.swift */; };
+		A10000010000000000000150 /* GlobalAlertCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000150 /* GlobalAlertCenter.swift */; };
+		A10000010000000000000202 /* MeterModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000202 /* MeterModels.swift */; };
+		A10000010000000000000203 /* MeterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000203 /* MeterStore.swift */; };
+		A10000010000000000000204 /* MeterQueryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000204 /* MeterQueryService.swift */; };
+		A10000010000000000000205 /* MeterWebViewProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000205 /* MeterWebViewProvider.swift */; };
+		A10000010000000000000206 /* MeterBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000206 /* MeterBoardView.swift */; };
+		A10000010000000000000207 /* MeterExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000207 /* MeterExportSheet.swift */; };
+		A10000010000000000000208 /* MeterManageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000208 /* MeterManageView.swift */; };
+		A10000010000000000000209 /* MeterRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000209 /* MeterRecordView.swift */; };
+		A10000010000000000000210 /* MeterSettingsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000210 /* MeterSettingsDetailView.swift */; };
+		A10000010000000000000211 /* QuickActionEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000211 /* QuickActionEditSheet.swift */; };
+		A10000010000000000000212 /* AjkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000212 /* AjkModels.swift */; };
+		A10000010000000000000213 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000213 /* KeychainHelper.swift */; };
+		A10000010000000000000214 /* AjkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000214 /* AjkStore.swift */; };
+		A10000010000000000000215 /* AjkWebViewProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000215 /* AjkWebViewProvider.swift */; };
+		A10000010000000000000216 /* AjkParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000216 /* AjkParser.swift */; };
+		A10000010000000000000217 /* AjkBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000217 /* AjkBoardView.swift */; };
+		A10000010000000000000218 /* AIAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000218 /* AIAssistantView.swift */; };
+		A10000010000000000000219 /* AIRequestService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000219 /* AIRequestService.swift */; };
+		A10000010000000000000220 /* AIToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000220 /* AIToolExecutor.swift */; };
+		A10000010000000000000226 /* AjkPublic.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000226 /* AjkPublic.swift */; };
+		A10000010000000000000227 /* AjkPublicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000227 /* AjkPublicView.swift */; };
+		A10000010000000000000221 /* AIManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000221 /* AIManager.swift */; };
+		A10000010000000000000222 /* F58Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000222 /* F58Models.swift */; };
+		A10000010000000000000223 /* F58Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000223 /* F58Store.swift */; };
+		A10000010000000000000224 /* F58WebViewProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000224 /* F58WebViewProvider.swift */; };
+		A10000010000000000000225 /* F58BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000225 /* F58BoardView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B10000010000000000000001 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		B10000010000000000000002 /* Property.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Property.swift; sourceTree = "<group>"; };
+		B10000010000000000000003 /* DealRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealRecord.swift; sourceTree = "<group>"; };
+		B10000010000000000000004 /* PayoutRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayoutRecord.swift; sourceTree = "<group>"; };
+		B10000010000000000000005 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
+		B10000010000000000000006 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		B10000010000000000000025 /* TodoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoViews.swift; sourceTree = "<group>"; };
+		B10000010000000000000007 /* DealsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealsView.swift; sourceTree = "<group>"; };
+		B10000010000000000000008 /* RentCollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RentCollectionView.swift; sourceTree = "<group>"; };
+		B10000010000000000000009 /* PayoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayoutView.swift; sourceTree = "<group>"; };
+		B10000010000000000000010 /* ProfitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfitView.swift; sourceTree = "<group>"; };
+		B10000010000000000000095 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B10000010000000000000096 /* DataBackupManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataBackupManager.swift; sourceTree = "<group>"; };
+		B30000010000000000000001 /* LocalNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationManager.swift; sourceTree = "<group>"; };
+		B10000010000000000000011 /* UtilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilityView.swift; sourceTree = "<group>"; };
+	B10000010000000000000119 /* RentStatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RentStatView.swift; sourceTree = "<group>"; };
+		B10000010000000000000015 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		B10000010000000000000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B10000010000000000000116 /* CloudDeployPackage.zip */ = {isa = PBXFileReference; lastKnownFileType = archive.zip; path = CloudDeployPackage.zip; sourceTree = "<group>"; };
+		B10000010000000000000013 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		B10000010000000000000014 /* AgentTool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AgentTool.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B20000010000000000000003 /* MigrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationView.swift; sourceTree = "<group>"; };
+		C20000010000000000000002 /* PlanEditors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanEditors.swift; sourceTree = "<group>"; };
+		W2 /* AgentToolWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentToolWidget.swift; sourceTree = "<group>"; };
+		WB /* WidgetDataSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataSync.swift; sourceTree = "<group>"; };
+		W5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		W4 /* AgentToolWidget.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; path = AgentToolWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10000010000000000000099 /* TrashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashView.swift; sourceTree = "<group>"; };
+		B10000010000000000000100 /* House.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = House.swift; sourceTree = "<group>"; };
+		B10000010000000000000101 /* CosUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CosUploader.swift; sourceTree = "<group>"; };
+		B10000010000000000000102 /* MediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStore.swift; sourceTree = "<group>"; };
+		B10000010000000000000199 /* RemoteConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteConfig.swift; sourceTree = "<group>"; };
+		B10000010000000000000201 /* RemoteConfigAdminView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteConfigAdminView.swift; sourceTree = "<group>"; };
+		B10000010000000000000103 /* HouseComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseComponents.swift; sourceTree = "<group>"; };
+		B10000010000000000000104 /* HouseDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseDetailView.swift; sourceTree = "<group>"; };
+		B10000010000000000000105 /* HouseEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseEditView.swift; sourceTree = "<group>"; };
+		B10000010000000000000106 /* HouseListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseListView.swift; sourceTree = "<group>"; };
+		B10000010000000000000118 /* HouseBatchImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseBatchImportView.swift; sourceTree = "<group>"; };
+		B10000010000000000000107 /* HouseSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseSettingsView.swift; sourceTree = "<group>"; };
+		B10000010000000000000108 /* BackupLogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupLogStore.swift; sourceTree = "<group>"; };
+		B10000010000000000000109 /* BackupV5Manager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupV5Manager.swift; sourceTree = "<group>"; };
+		B10000010000000000000110 /* CloudBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupService.swift; sourceTree = "<group>"; };
+		B10000010000000000000111 /* CrashLogCollector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashLogCollector.swift; sourceTree = "<group>"; };
+		B10000010000000000000112 /* ZipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipStore.swift; sourceTree = "<group>"; };
+		B10000010000000000000113 /* BackupCenterViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupCenterViews.swift; sourceTree = "<group>"; };
+		B10000010000000000000114 /* HouseMediaUploadQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseMediaUploadQueue.swift; sourceTree = "<group>"; };
+		B10000010000000000000301 /* MediaActivityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaActivityGate.swift; sourceTree = "<group>"; };
+		B10000010000000000000302 /* HouseSyncGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseSyncGuard.swift; sourceTree = "<group>"; };
+		B10000010000000000000303 /* HouseClipboardImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseClipboardImport.swift; sourceTree = "<group>"; };
+		B10000010000000000000304 /* HouseActionNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseActionNotifier.swift; sourceTree = "<group>"; };
+		B10000010000000000000305 /* HouseLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseLedger.swift; sourceTree = "<group>"; };
+		B10000010000000000000306 /* HouseLedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseLedgerView.swift; sourceTree = "<group>"; };
+		B10000010000000000000117 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		B10000010000000000000140 /* MediaPendingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPendingView.swift; sourceTree = "<group>"; };
+		B10000010000000000000141 /* SyncTaskCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTaskCenter.swift; sourceTree = "<group>"; };
+		B10000010000000000000401 /* HouseUploadRollbacker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseUploadRollbacker.swift; sourceTree = "<group>"; };
+		B10000010000000000000150 /* GlobalAlertCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalAlertCenter.swift; sourceTree = "<group>"; };
+		B10000010000000000000202 /* MeterModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterModels.swift; sourceTree = "<group>"; };
+		B10000010000000000000203 /* MeterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterStore.swift; sourceTree = "<group>"; };
+		B10000010000000000000204 /* MeterQueryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterQueryService.swift; sourceTree = "<group>"; };
+		B10000010000000000000205 /* MeterWebViewProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterWebViewProvider.swift; sourceTree = "<group>"; };
+		B10000010000000000000206 /* MeterBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterBoardView.swift; sourceTree = "<group>"; };
+		B10000010000000000000207 /* MeterExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterExportSheet.swift; sourceTree = "<group>"; };
+		B10000010000000000000208 /* MeterManageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterManageView.swift; sourceTree = "<group>"; };
+		B10000010000000000000209 /* MeterRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterRecordView.swift; sourceTree = "<group>"; };
+		B10000010000000000000210 /* MeterSettingsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeterSettingsDetailView.swift; sourceTree = "<group>"; };
+		B10000010000000000000211 /* QuickActionEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionEditSheet.swift; sourceTree = "<group>"; };
+		B10000010000000000000212 /* AjkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AjkModels.swift; sourceTree = "<group>"; };
+		B10000010000000000000213 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		B10000010000000000000214 /* AjkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AjkStore.swift; sourceTree = "<group>"; };
+		B10000010000000000000215 /* AjkWebViewProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AjkWebViewProvider.swift; sourceTree = "<group>"; };
+		B10000010000000000000216 /* AjkParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AjkParser.swift; sourceTree = "<group>"; };
+		B10000010000000000000217 /* AjkBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AjkBoardView.swift; sourceTree = "<group>"; };
+		B10000010000000000000218 /* AIAssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAssistantView.swift; sourceTree = "<group>"; };
+		B10000010000000000000219 /* AIRequestService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRequestService.swift; sourceTree = "<group>"; };
+		B10000010000000000000220 /* AIToolExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolExecutor.swift; sourceTree = "<group>"; };
+		B10000010000000000000226 /* AjkPublic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AjkPublic.swift; sourceTree = "<group>"; };
+		B10000010000000000000227 /* AjkPublicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AjkPublicView.swift; sourceTree = "<group>"; };
+		B10000010000000000000221 /* AIManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIManager.swift; sourceTree = "<group>"; };
+		B10000010000000000000222 /* F58Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = F58Models.swift; sourceTree = "<group>"; };
+		B10000010000000000000223 /* F58Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = F58Store.swift; sourceTree = "<group>"; };
+		B10000010000000000000224 /* F58WebViewProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = F58WebViewProvider.swift; sourceTree = "<group>"; };
+		B10000010000000000000225 /* F58BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = F58BoardView.swift; sourceTree = "<group>"; };
+		B10000010000000000000115 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		LSR0000000000000000000001 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C10000010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EW /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			buildActionMask = 2147483647;
+			files = (
+				W3 /* AgentToolWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		TP /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = H10000010000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = WT;
+			remoteInfo = AgentToolWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		TD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = WT /* AgentToolWidget */;
+			targetProxy = TP /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXGroup section */
+		D10000010000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				D10000010000000000000002 /* AgentTool */,
+				D10000010000000000000003 /* Products */,
+				WG /* AgentToolWidget */,
+			);
+			sourceTree = "<group>";
+		};
+		D10000010000000000000002 /* AgentTool */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000001 /* App.swift */,
+				WB /* WidgetDataSync.swift */,
+				D10000010000000000000004 /* Models */,
+				D10000010000000000000005 /* ViewModels */,
+				D20000010000000000000001 /* Sync */,
+				D10000010000000000000006 /* Views */,
+				B10000010000000000000012 /* Assets.xcassets */,
+				LSR0000000000000000000001 /* LaunchScreen.storyboard */,
+				B10000010000000000000116 /* CloudDeployPackage.zip */,
+				B10000010000000000000115 /* Info.plist */,
+				D10000010000000000000007 /* Preview Content */,
+				D10000010000000000000008 /* HouseKeeper */,
+			);
+			path = AgentTool;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000014 /* AgentTool.app */,
+				W4 /* AgentToolWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000002 /* Property.swift */,
+				B10000010000000000000003 /* DealRecord.swift */,
+				B10000010000000000000004 /* PayoutRecord.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000005 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000005 /* DataManager.swift */,
+				B10000010000000000000096 /* DataBackupManager.swift */,
+				B10000010000000000000108 /* BackupLogStore.swift */,
+				B10000010000000000000109 /* BackupV5Manager.swift */,
+				B10000010000000000000110 /* CloudBackupService.swift */,
+				B10000010000000000000111 /* CrashLogCollector.swift */,
+				B10000010000000000000112 /* ZipStore.swift */,
+				B30000010000000000000001 /* LocalNotificationManager.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		D20000010000000000000001 /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				B20000010000000000000003 /* MigrationView.swift */,
+			);
+			path = Sync;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000006 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000006 /* DashboardView.swift */,
+				B10000010000000000000025 /* TodoViews.swift */,
+				B10000010000000000000007 /* DealsView.swift */,
+				B10000010000000000000008 /* RentCollectionView.swift */,
+				B10000010000000000000009 /* PayoutView.swift */,
+				B10000010000000000000010 /* ProfitView.swift */,
+				B10000010000000000000095 /* SettingsView.swift */,
+				B10000010000000000000140 /* MediaPendingView.swift */,
+				B10000010000000000000113 /* BackupCenterViews.swift */,
+				B10000010000000000000011 /* UtilityView.swift */,
+				B10000010000000000000099 /* TrashView.swift */,
+				B10000010000000000000015 /* Theme.swift */,
+				B10000010000000000000119 /* RentStatView.swift */,
+				C20000010000000000000002 /* PlanEditors.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000007 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000013 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		WG /* AgentToolWidget */ = {isa = PBXGroup; children = (W2 /* AgentToolWidget.swift */, W5 /* Info.plist */,); path = AgentToolWidget; sourceTree = "<group>"; };
+		D10000010000000000000008 /* HouseKeeper */ = {
+			isa = PBXGroup;
+			children = (
+				D10000010000000000000009 /* Models */,
+				D10000010000000000000010 /* Services */,
+				D10000010000000000000011 /* Views */,
+				D10000010000000000000012 /* Meters */,
+				D10000010000000000000013 /* Ajk */,
+				D10000010000000000000014 /* F58 */,
+			);
+			path = HouseKeeper;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000009 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000100 /* House.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000010 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000101 /* CosUploader.swift */,
+				B10000010000000000000102 /* MediaStore.swift */,
+				B10000010000000000000199 /* RemoteConfig.swift */,
+				B10000010000000000000201 /* RemoteConfigAdminView.swift */,
+				B10000010000000000000114 /* HouseMediaUploadQueue.swift */,
+				B10000010000000000000301 /* MediaActivityGate.swift */,
+				B10000010000000000000302 /* HouseSyncGuard.swift */,
+				B10000010000000000000303 /* HouseClipboardImport.swift */,
+				B10000010000000000000304 /* HouseActionNotifier.swift */,
+				B10000010000000000000305 /* HouseLedger.swift */,
+				B10000010000000000000117 /* NetworkMonitor.swift */,
+				B10000010000000000000141 /* SyncTaskCenter.swift */,
+				B10000010000000000000150 /* GlobalAlertCenter.swift */,
+				B10000010000000000000401 /* HouseUploadRollbacker.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000011 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000103 /* HouseComponents.swift */,
+				B10000010000000000000104 /* HouseDetailView.swift */,
+				B10000010000000000000306 /* HouseLedgerView.swift */,
+				B10000010000000000000105 /* HouseEditView.swift */,
+				B10000010000000000000106 /* HouseListView.swift */,
+				B10000010000000000000118 /* HouseBatchImportView.swift */,
+				B10000010000000000000107 /* HouseSettingsView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000012 /* Meters */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000202 /* MeterModels.swift */,
+				B10000010000000000000203 /* MeterStore.swift */,
+				B10000010000000000000204 /* MeterQueryService.swift */,
+				B10000010000000000000205 /* MeterWebViewProvider.swift */,
+				B10000010000000000000206 /* MeterBoardView.swift */,
+				B10000010000000000000207 /* MeterExportSheet.swift */,
+				B10000010000000000000208 /* MeterManageView.swift */,
+				B10000010000000000000209 /* MeterRecordView.swift */,
+				B10000010000000000000210 /* MeterSettingsDetailView.swift */,
+				B10000010000000000000211 /* QuickActionEditSheet.swift */,
+			);
+			path = Meters;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000013 /* Ajk */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000212 /* AjkModels.swift */,
+				B10000010000000000000213 /* KeychainHelper.swift */,
+				B10000010000000000000214 /* AjkStore.swift */,
+				B10000010000000000000215 /* AjkWebViewProvider.swift */,
+				B10000010000000000000216 /* AjkParser.swift */,
+				B10000010000000000000217 /* AjkBoardView.swift */,
+				B10000010000000000000218 /* AIAssistantView.swift */,
+				B10000010000000000000219 /* AIRequestService.swift */,
+				B10000010000000000000220 /* AIToolExecutor.swift */,
+				B10000010000000000000226 /* AjkPublic.swift */,
+				B10000010000000000000227 /* AjkPublicView.swift */,
+				B10000010000000000000221 /* AIManager.swift */,
+			);
+			path = Ajk;
+			sourceTree = "<group>";
+		};
+		D10000010000000000000014 /* F58 */ = {
+			isa = PBXGroup;
+			children = (
+				B10000010000000000000222 /* F58Models.swift */,
+				B10000010000000000000223 /* F58Store.swift */,
+				B10000010000000000000224 /* F58WebViewProvider.swift */,
+				B10000010000000000000225 /* F58BoardView.swift */,
+			);
+			path = F58;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXSourcesBuildPhase section */
+		WP = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (W1 /* AgentToolWidget.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+/* Begin PBXNativeTarget section */
+		E10000010000000000000001 /* AgentTool */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000010000000000000003 /* Build configuration list for PBXNativeTarget "AgentTool" */;
+			buildPhases = (
+				G10000010000000000000001 /* Sources */,
+				C10000010000000000000001 /* Frameworks */,
+				G10000010000000000000002 /* Resources */,
+				EW /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				TD /* PBXTargetDependency */,
+			);
+			name = AgentTool;
+			productName = AgentTool;
+			productReference = B10000010000000000000014 /* AgentTool.app */;
+			productType = "com.apple.product-type.application";
+		};
+		WT /* AgentToolWidget */ = {isa = PBXNativeTarget; buildConfigurationList = WC; buildPhases = (WP,); buildRules = (); dependencies = (); name = AgentToolWidget; productName = AgentToolWidget; productReference = W4; productType = "com.apple.product-type.app-extension"; };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		H10000010000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					E10000010000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = F10000010000000000000001 /* Build configuration list for PBXProject "AgentTool" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D10000010000000000000001;
+			productRefGroup = D10000010000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E10000010000000000000001 /* AgentTool */,
+				WT /* AgentToolWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		G10000010000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000010000000000000013 /* Preview Assets.xcassets in Resources */,
+				A10000010000000000000012 /* Assets.xcassets in Resources */,
+				LSB0000000000000000000001 /* LaunchScreen.storyboard in Resources */,
+				A10000010000000000000116 /* CloudDeployPackage.zip in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		G10000010000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000010000000000000001 /* App.swift in Sources */,
+				WA /* WidgetDataSync.swift in Sources */,
+				A10000010000000000000002 /* Property.swift in Sources */,
+				A10000010000000000000003 /* DealRecord.swift in Sources */,
+				A10000010000000000000004 /* PayoutRecord.swift in Sources */,
+				A10000010000000000000005 /* DataManager.swift in Sources */,
+				A10000010000000000000006 /* DashboardView.swift in Sources */,
+				A10000010000000000000025 /* TodoViews.swift in Sources */,
+				A10000010000000000000007 /* DealsView.swift in Sources */,
+				A10000010000000000000008 /* RentCollectionView.swift in Sources */,
+				A10000010000000000000009 /* PayoutView.swift in Sources */,
+				A10000010000000000000010 /* ProfitView.swift in Sources */,
+				A10000010000000000000095 /* SettingsView.swift in Sources */,
+				A10000010000000000000096 /* DataBackupManager.swift in Sources */,
+				A30000010000000000000001 /* LocalNotificationManager.swift in Sources */,
+				A10000010000000000000011 /* UtilityView.swift in Sources */,
+				A10000010000000000000099 /* TrashView.swift in Sources */,
+				A10000010000000000000015 /* Theme.swift in Sources */,
+				A10000010000000000000119 /* RentStatView.swift in Sources */,
+				A20000010000000000000003 /* MigrationView.swift in Sources */,
+				C20000010000000000000001 /* PlanEditors.swift in Sources */,
+				A10000010000000000000100 /* House.swift in Sources */,
+				A10000010000000000000101 /* CosUploader.swift in Sources */,
+				A10000010000000000000102 /* MediaStore.swift in Sources */,
+				A10000010000000000000199 /* RemoteConfig.swift in Sources */,
+				A10000010000000000000201 /* RemoteConfigAdminView.swift in Sources */,
+				A10000010000000000000103 /* HouseComponents.swift in Sources */,
+				A10000010000000000000104 /* HouseDetailView.swift in Sources */,
+				A10000010000000000000105 /* HouseEditView.swift in Sources */,
+				A10000010000000000000106 /* HouseListView.swift in Sources */,
+				A10000010000000000000118 /* HouseBatchImportView.swift in Sources */,
+				A10000010000000000000107 /* HouseSettingsView.swift in Sources */,
+				A10000010000000000000108 /* BackupLogStore.swift in Sources */,
+				A10000010000000000000109 /* BackupV5Manager.swift in Sources */,
+				A10000010000000000000110 /* CloudBackupService.swift in Sources */,
+				A10000010000000000000111 /* CrashLogCollector.swift in Sources */,
+				A10000010000000000000112 /* ZipStore.swift in Sources */,
+				A10000010000000000000113 /* BackupCenterViews.swift in Sources */,
+				A10000010000000000000114 /* HouseMediaUploadQueue.swift in Sources */,
+				A10000010000000000000301 /* MediaActivityGate.swift in Sources */,
+				A10000010000000000000302 /* HouseSyncGuard.swift in Sources */,
+				A10000010000000000000303 /* HouseClipboardImport.swift in Sources */,
+				A10000010000000000000304 /* HouseActionNotifier.swift in Sources */,
+				A10000010000000000000305 /* HouseLedger.swift in Sources */,
+				A10000010000000000000306 /* HouseLedgerView.swift in Sources */,
+				A10000010000000000000117 /* NetworkMonitor.swift in Sources */,
+				A10000010000000000000141 /* SyncTaskCenter.swift in Sources */,
+				A10000010000000000000150 /* GlobalAlertCenter.swift in Sources */,
+				A10000010000000000000401 /* HouseUploadRollbacker.swift in Sources */,
+				A10000010000000000000140 /* MediaPendingView.swift in Sources */,
+				A10000010000000000000202 /* MeterModels.swift in Sources */,
+				A10000010000000000000203 /* MeterStore.swift in Sources */,
+				A10000010000000000000204 /* MeterQueryService.swift in Sources */,
+				A10000010000000000000205 /* MeterWebViewProvider.swift in Sources */,
+				A10000010000000000000206 /* MeterBoardView.swift in Sources */,
+				A10000010000000000000207 /* MeterExportSheet.swift in Sources */,
+				A10000010000000000000208 /* MeterManageView.swift in Sources */,
+				A10000010000000000000209 /* MeterRecordView.swift in Sources */,
+				A10000010000000000000210 /* MeterSettingsDetailView.swift in Sources */,
+				A10000010000000000000211 /* QuickActionEditSheet.swift in Sources */,
+				A10000010000000000000212 /* AjkModels.swift in Sources */,
+				A10000010000000000000213 /* KeychainHelper.swift in Sources */,
+				A10000010000000000000214 /* AjkStore.swift in Sources */,
+				A10000010000000000000215 /* AjkWebViewProvider.swift in Sources */,
+				A10000010000000000000216 /* AjkParser.swift in Sources */,
+				A10000010000000000000217 /* AjkBoardView.swift in Sources */,
+				A10000010000000000000218 /* AIAssistantView.swift in Sources */,
+				A10000010000000000000219 /* AIRequestService.swift in Sources */,
+				A10000010000000000000220 /* AIToolExecutor.swift in Sources */,
+				A10000010000000000000226 /* AjkPublic.swift in Sources */,
+				A10000010000000000000227 /* AjkPublicView.swift in Sources */,
+				A10000010000000000000221 /* AIManager.swift in Sources */,
+				A10000010000000000000222 /* F58Models.swift in Sources */,
+				A10000010000000000000223 /* F58Store.swift in Sources */,
+				A10000010000000000000224 /* F58WebViewProvider.swift in Sources */,
+				A10000010000000000000225 /* F58BoardView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		I10000010000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		I10000010000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		I10000010000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AgentTool/AgentTool.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 192;
+				DEVELOPMENT_ASSET_PATHS = "\"AgentTool/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AgentTool/Info.plist;
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh_CN";
+INFOPLIST_KEY_CFBundleDisplayName = "公寓管家";
+				/* v1.12: 删除硬编码版本覆盖（设置页显示 5.0 根因），统一由 MARKETING_VERSION 生效 */
+INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描公寓管家的手动同步和迁移二维码。";
+INFOPLIST_KEY_NSLocalNetworkUsageDescription = "仅在你点击同步时连接同一局域网内的公寓管家电脑版。";
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.62;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		I10000010000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AgentTool/AgentTool.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 192;
+				DEVELOPMENT_ASSET_PATHS = "\"AgentTool/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AgentTool/Info.plist;
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh_CN";
+INFOPLIST_KEY_CFBundleDisplayName = "公寓管家";
+				/* v1.12: 删除硬编码版本覆盖（设置页显示 5.0 根因），统一由 MARKETING_VERSION 生效 */
+INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描公寓管家的手动同步和迁移二维码。";
+INFOPLIST_KEY_NSLocalNetworkUsageDescription = "仅在你点击同步时连接同一局域网内的公寓管家电脑版。";
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.62;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		WD = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolWidget/AgentToolWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 192; INFOPLIST_FILE = AgentToolWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 2.62; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.widget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+		WR = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolWidget/AgentToolWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 192; INFOPLIST_FILE = AgentToolWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 2.62; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.widget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F10000010000000000000001 /* Build configuration list for PBXProject "AgentTool" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I10000010000000000000001 /* Debug */,
+				I10000010000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F10000010000000000000003 /* Build configuration list for PBXNativeTarget "AgentTool" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I10000010000000000000003 /* Debug */,
+				I10000010000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		WC = {isa = XCConfigurationList; buildConfigurations = (WD, WR,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = H10000010000000000000001 /* Project object */;
+}

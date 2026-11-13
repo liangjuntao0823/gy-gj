@@ -1,0 +1,366 @@
+//
+//  AjkWebViewProvider.swift
+//  公寓管家 · 安居客经纪人后台数据抓取（v2.13：1.98 原实现 + 翻页到底判定，仅保留逐步进度显示）
+//  方案：WKWebView 持久登录态（cookie 保存，登录一次免登）→ 注入 JS 收集页面房源卡片文本与概览 → Swift 解析入库
+//  安全边界：仅用户主动触发抓取；只读取用户自己账号页面；绝不做任何写操作（发布/编辑/推广）
+//
+
+import Foundation
+import WebKit
+
+@MainActor
+final class AjkWebViewProvider: NSObject, WKNavigationDelegate {
+
+    static let shared = AjkWebViewProvider()
+
+    /// 抓取结果（Swift 侧解析）
+    struct FetchResult {
+        var houses: [AjkHouse] = []
+        var overview: AjkOverview = .empty
+        var needLogin: Bool = false
+        var error: String = ""
+    }
+
+    private var webView: WKWebView?
+    private var continuation: CheckedContinuation<FetchResult, Error>?
+    private var pendingMaxPages = 5
+    private var pageLoadCount = 0
+    /// 跨 page 消息累积（每次抓取前清空；@MainActor 单例，无并发问题）
+    private var pendingHouses: [AjkHouse] = []
+    private var pendingOverview: AjkOverview = .empty
+    /// v1.91：两步抓取——先工作台首页（神奇分/房产币）再房源列表页
+    private var phase = 0                 // 0=工作台概览 1=房源列表
+    private var pendingOverviewText: String? = nil
+    /// 是否已经成功翻过页（翻页后列表页若整页重载，直接收尾，不再等超时）
+    private var hasPaginated = false
+    /// 逐步进度回调（每次抓取前设置，完成/失败时清空）
+    private var onProgress: ((String) -> Void)?
+    private static let overviewURL = "https://vip.anjuke.com/user/brokerhomeV2"
+
+    // MARK: - 公开入口：抓取全部房源（当前登录态）
+
+    func fetchAll(maxPages: Int, onProgress: ((String) -> Void)? = nil) async throws -> FetchResult {
+        self.onProgress = onProgress
+        pendingMaxPages = maxPages
+        pendingHouses = []
+        pendingOverview = .empty
+        pendingOverviewText = nil
+        hasPaginated = false
+        phase = 0
+        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<FetchResult, Error>) in
+            self.continuation = cont
+            let config = WKWebViewConfiguration()
+            // 持久数据存储：保存登录 cookie（与电表方案的临时会话相反，这里必须记住登录态）
+            config.websiteDataStore = .default()
+            let wv = WKWebView(frame: .init(x: 0, y: 0, width: 390, height: 844), configuration: config)
+            wv.navigationDelegate = self
+            let controller = wv.configuration.userContentController
+            controller.add(self, name: "ajkScrape")
+            self.webView = wv
+            // v1.91：先加载工作台首页抓神奇分/房产币，再进房源列表抓卡片
+            let url = URL(string: Self.overviewURL)!
+            wv.load(URLRequest(url: url))
+            self.progress("正在打开安居客后台…")
+            // 兜底超时（页面卡死/网络异常时恢复，避免无限等待；两步加载放宽到 75s）
+            DispatchQueue.main.asyncAfter(deadline: .now() + 75) {
+                if let c = self.continuation {
+                    self.continuation = nil
+                    c.resume(throwing: AjkError.msg("页面加载超时，请检查网络后重试"))
+                }
+            }
+        }
+    }
+
+    // MARK: - 逐步进度
+
+    private func progress(_ text: String) {
+        onProgress?(text)
+    }
+
+    // MARK: - 导航回调
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        pageLoadCount += 1
+        // 已经翻过页之后列表页又整页重载：说明点到了不存在的「下一页」，脚本上下文已被销毁，
+        // 此时不再重复注入、也不再等 75s 超时，直接用已收集的两页数据正常收尾。
+        if phase == 1 && hasPaginated && !pendingHouses.isEmpty {
+            progress("已读取全部页面，正在整理房源…")
+            finishWithCollected()
+            return
+        }
+        progress(phase == 0 ? "正在读取工作台概览（神奇分/房产币）…" : "正在读取房源列表…")
+        // SPA 异步渲染 + 登录判定后注入抓取脚本；phase 0=工作台概览，1=房源列表
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            if self.phase == 0 {
+                self.runOverviewScrape(on: webView)
+            } else {
+                self.runScrape(on: webView)
+            }
+        }
+    }
+
+    // MARK: - 注入 JS：收集工作台概览文本（神奇分/房产币）
+
+    private func runOverviewScrape(on webView: WKWebView) {
+        let js = """
+        (async function(){
+          function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+          function norm(s){ return (s||'').replace(/\\s+/g,' ').trim(); }
+          // 等待 SPA 渲染出神奇分/房产币（最多 12 秒）
+          var waited = 0;
+          while (waited < 12000) {
+            var bt = (document.body && (document.body.innerText || document.body.textContent)) || '';
+            if (bt.indexOf('神奇分') >= 0 && (bt.indexOf('总分') >= 0 || bt.indexOf('房产币') >= 0)) break;
+            await sleep(500); waited += 500;
+          }
+          var bodyText = norm(document.body.innerText || document.body.textContent);
+          window.webkit.messageHandlers.ajkScrape.postMessage(JSON.stringify({type:'overview', text: bodyText}));
+        })();
+        void 0;
+        """
+        webView.evaluateJavaScript(js) { _, error in
+            if let error = error {
+                Task { @MainActor in
+                    self.finish(error: "脚本执行失败：\(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    // MARK: - 注入 JS：收集原始文本（解析放 Swift）
+
+    private func runScrape(on webView: WKWebView) {
+        let maxPages = pendingMaxPages
+        let js = """
+        (async function(){
+          function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+          function norm(s){ return (s||'').replace(/\\s+/g,' ').trim(); }
+          // 等待 SPA 渲染出房源卡片（最多 15 秒，防抓空）
+          var waited = 0;
+          while (waited < 15000) {
+            if (document.body && document.body.innerText && document.body.innerText.indexOf('编号:') >= 0) break;
+            await sleep(500); waited += 500;
+          }
+          // 收集概览文本
+          var bodyText = norm(document.body.innerText || document.body.textContent);
+          // 收集房源卡片：找到含"编号:"的文本节点，向上定位到含"预约管理"的容器；
+          // v1.90：同时抓取卡片内第一张封面图 URL（缩略图，作为房源封面）
+          function collectCards(seenSet) {
+            var out = [];
+            var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+              var n = walker.currentNode;
+              if (n.nodeValue && n.nodeValue.indexOf('编号:') >= 0) {
+                var el = n.parentElement;
+                var guard = 0;
+                var t = '';
+                while (el && guard < 8) {
+                  t = el.innerText || '';
+                  if (t.indexOf('预约管理') >= 0 && t.indexOf('编号:') >= 0) { break; }
+                  el = el.parentElement; guard++;
+                }
+                if (!el) continue;
+                var m = t.match(/编号:(\\d+)/);
+                if (m && !seenSet.has(m[1])) {
+                  seenSet.add(m[1]);
+                  var cover = '';
+                  var img = el.querySelector('img');
+                  if (img) { cover = img.getAttribute('src') || img.getAttribute('data-src') || ''; }
+                  out.push({t: norm(t), cover: cover});
+                }
+              }
+            }
+            return out;
+          }
+          var seen = new Set();
+          var cards = collectCards(seen);
+          var out = {type:'page', overview: bodyText, cards: cards, page: 1};
+          window.webkit.messageHandlers.ajkScrape.postMessage(JSON.stringify(out));
+          // 自动翻页：点"下一页"直到没有或达到上限
+          // v2.13：按安居客真实分页（Ant Design：li.ant-pagination-next > button > span("下一页")）取点击目标。
+          // span 自身 pointer-events:none，点它无效，必须点上层的 button；
+          // 是否最后一页只认 aria-disabled="true" / disabled 类，不能用 pointer-events 判断。
+          function pickClickable(el) {
+            var p = el;
+            while (p && p.tagName !== 'BODY') {
+              if (p.tagName === 'BUTTON' || p.tagName === 'A') return p;
+              p = p.parentElement;
+            }
+            return el;
+          }
+          function isDeadNext(el) {
+            var node = el, depth = 0;
+            while (node && depth < 5) {
+              var cls = (node.className && node.className.toString()) ? node.className.toString().toLowerCase() : '';
+              if (cls.indexOf('disabled') >= 0) return true;
+              if (node.getAttribute && node.getAttribute('aria-disabled') === 'true') return true;
+              if (node.hasAttribute && node.hasAttribute('disabled')) return true;
+              node = node.parentElement; depth++;
+            }
+            return false;
+          }
+          function findNext() {
+            var nodes = document.querySelectorAll('a, button, span, div, li');
+            for (var i = 0; i < nodes.length; i++) {
+              var el = nodes[i];
+              if (norm(el.textContent) !== '下一页') continue;
+              var rect = el.getBoundingClientRect();
+              if (!rect || rect.width < 1 || rect.height < 1) continue;
+              var click = pickClickable(el);
+              if (isDeadNext(click)) continue;
+              return click;
+            }
+            return null;
+          }
+          function totalPageCount() {
+            // 只认分页器上真实存在的页码（Ant 的 li[title="2"]），避免把正文里无关的"N页"当成总页数
+            var items = document.querySelectorAll('li[title], .ant-pagination-item');
+            var max = 0;
+            for (var i = 0; i < items.length; i++) {
+              var n = parseInt((items[i].getAttribute('title') || '').trim(), 10);
+              if (!isNaN(n) && n > max) max = n;
+            }
+            return max;
+          }
+          var page = 1;
+          var maxP = \(maxPages);
+          var total = totalPageCount();
+          for (var p = 1; p < maxP; p++) {
+            if (total > 0 && (p + 1) > total) break;       // 已知总页数：到最后一页就停，绝不多点
+            var next = findNext();
+            if (!next) break;
+            window.webkit.messageHandlers.ajkScrape.postMessage(JSON.stringify({type:'progress', text:'正在解析第 ' + (p + 1) + ' 页…'}));
+            next.click();
+            await sleep(2500);
+            // 收集新一页
+            var cards2 = collectCards(seen);
+            page = p + 1;
+            window.webkit.messageHandlers.ajkScrape.postMessage(JSON.stringify({type:'page', overview: bodyText, cards: cards2, page: page}));
+            if (cards2.length === 0) break;                // 新页没有新卡片 = 已到最后一页
+            if (total === 0) total = totalPageCount();
+          }
+          window.webkit.messageHandlers.ajkScrape.postMessage(JSON.stringify({type:'done', total: seen.size, error:''}));
+        })();
+        void 0;
+        """
+        webView.evaluateJavaScript(js) { _, error in
+            if let error = error {
+                // evaluateJavaScript 回调为非隔离上下文，需切回主 actor 再调用 @MainActor 方法
+                Task { @MainActor in
+                    self.finish(error: "脚本执行失败：\(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func finish(error: String) {
+        guard let c = continuation else { return }
+        continuation = nil
+        webView?.stopLoading()
+        webView = nil
+        onProgress = nil
+        var result = FetchResult()
+        result.error = error
+        c.resume(returning: result)
+    }
+
+    /// 用已收集到的数据正常收尾（翻页后列表页整页重载时使用，避免误报超时）
+    private func finishWithCollected() {
+        guard let c = continuation else { return }
+        continuation = nil
+        webView?.configuration.userContentController.removeScriptMessageHandler(forName: "ajkScrape")
+        webView?.stopLoading()
+        webView = nil
+        onProgress = nil
+        var result = FetchResult()
+        result.houses = pendingHouses
+        result.overview = pendingOverview
+        if result.houses.isEmpty && result.overview == .empty {
+            result.needLogin = true
+        }
+        c.resume(returning: result)
+    }
+}
+
+extension AjkWebViewProvider: WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "ajkScrape",
+              let body = message.body as? String,
+              let dict = try? JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any],
+              let type = dict["type"] as? String else { return }
+
+        if type == "progress" {
+            if let text = dict["text"] as? String { progress(text) }
+            return
+        }
+
+        if type == "overview" {
+            // 工作台首页文本（神奇分/房产币）已拿到 → 切到房源列表页继续
+            pendingOverviewText = (dict["text"] as? String) ?? ""
+            phase = 1
+            progress("正在打开房源列表页…")
+            let url = URL(string: AjkStore.shared.settings.baseURL) ?? URL(string: "https://vip.anjuke.com/zufang/main/zufang/subpages/allHouse")!
+            webView?.load(URLRequest(url: url))
+            return
+        }
+
+        if type == "page" {
+            let overview = (dict["overview"] as? String) ?? ""
+            let page = (dict["page"] as? Int) ?? 1
+            if page > 1 { hasPaginated = true }
+            progress("正在解析第 \(page) 页…")
+            // v1.90：卡片元素为 {t, cover} 对象；兼容旧版纯文本数组
+            var cardTexts: [String] = []
+            var covers: [String: String] = [:]   // number -> coverURL
+            if let objs = dict["cards"] as? [[String: Any]] {
+                for obj in objs {
+                    let t = (obj["t"] as? String) ?? ""
+                    let cover = (obj["cover"] as? String) ?? ""
+                    if t.isEmpty { continue }
+                    if let m = t.range(of: #"编号:(\d+)"#, options: .regularExpression) {
+                        let num = String(t[m]).replacingOccurrences(of: "编号:", with: "")
+                        if !cover.isEmpty { covers[num] = cover }
+                    }
+                    cardTexts.append(t)
+                }
+            } else if let strs = dict["cards"] as? [String] {
+                cardTexts = strs
+            }
+            // v1.91：概览 = 工作台文本（神奇分/房产币）+ 列表页文本（今日点击/推广/端口/套餐），合并后解析
+            let combinedOverview = [pendingOverviewText, overview].compactMap { $0 }.joined(separator: " ")
+            let parsed = AjkParser.parse(overview: combinedOverview, cards: cardTexts, covers: covers, page: page)
+            if !parsed.houses.isEmpty {
+                pendingHouses += parsed.houses
+                pendingOverview = parsed.overview
+            }
+            return
+        }
+
+        if type == "done" {
+            guard let c = continuation else { return }
+            continuation = nil
+            userContentController.removeScriptMessageHandler(forName: "ajkScrape")
+            webView?.stopLoading()
+            webView = nil
+            onProgress = nil
+            var result = FetchResult()
+            result.houses = pendingHouses
+            result.overview = pendingOverview
+            // 登录态判定：一张卡片都没抓到且概览不含房源特征 → 可能未登录
+            if result.houses.isEmpty && result.overview == .empty {
+                result.needLogin = true
+            }
+            c.resume(returning: result)
+        }
+    }
+}
+
+/// 抓取错误
+enum AjkError: LocalizedError {
+    case msg(String)
+    var errorDescription: String? {
+        switch self {
+        case .msg(let m): return m
+        }
+    }
+}
