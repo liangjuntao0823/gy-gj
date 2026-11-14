@@ -17,6 +17,54 @@ enum CloudChangeState: Equatable {
     case detectFailed    // 检测失败（断网/超时/未配置云），不再静默
 }
 
+/// v2.63（b121 回归）：自动云端变更检测的全局指示状态。
+/// 冷启动 / 回前台 / 进板块 30 分钟兜底三条路径最终都走 detectCloudLedgerChange，
+/// 在这里统一「点亮 → 至少展示 0.6 秒 → 熄灭」，让用户能看到「正在检测云端变更…」，
+/// 不再出现「无变化时一点反馈都没有」的静默感知。
+/// 约定：本类所有方法只从主线程调用（异步入口用 MainActor.run 包一层）。
+final class CloudDetectActivity: ObservableObject {
+    static let shared = CloudDetectActivity()
+
+    /// 自动检测进行中（房源页顶部胶囊进度条据此显示）
+    @Published private(set) var isDetecting = false
+    /// 手动云端同步进行中——自动检测直接跳过，避免两边同时拉清单、结论互相打架
+    @Published private(set) var isManualSyncing = false
+
+    private var detectDepth = 0
+    private var manualDepth = 0
+    private var startedAt: Date?
+
+    func beginDetecting() {
+        detectDepth += 1
+        if startedAt == nil { startedAt = Date() }
+        isDetecting = true
+    }
+
+    /// 至少展示 minimumVisible 秒（沿用 b121 的 0.6 秒口径），避免检测太快、一闪而过感知不到。
+    /// 计数归零后才真正收尾；期间又来了新检测则继续显示。
+    func endDetecting(minimumVisible: TimeInterval = 0.6) {
+        detectDepth = max(0, detectDepth - 1)
+        guard detectDepth == 0 else { return }
+        let elapsed = Date().timeIntervalSince(startedAt ?? Date())
+        let delay = max(0, minimumVisible - elapsed)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.detectDepth == 0 else { return }
+            self.isDetecting = false
+            self.startedAt = nil
+        }
+    }
+
+    func beginManualSync() {
+        manualDepth += 1
+        isManualSyncing = true
+    }
+
+    func endManualSync() {
+        manualDepth = max(0, manualDepth - 1)
+        if manualDepth == 0 { isManualSyncing = false }
+    }
+}
+
 struct HouseListView: View {
     /// 房源板块使用独立 HouseStore 容器的专属 context（由 App 注入）。
     /// 不能用主容器的 modelContext——iOS 17 早期版本多配置容器上查询会崩溃（闪退根因）。
@@ -88,6 +136,8 @@ struct HouseListView: View {
     @State private var showSyncConfirm = false
     // v1.72（#1/#5）：刷新/同步进行中状态——点刷新立即反馈「正在刷新…」，比对完成才收起
     @State private var isSyncing = false
+    /// v2.63：自动检测指示状态（冷启动 / 回前台 / 进板块兜底三条路径共用同一个全局状态）
+    @StateObject private var detectActivity = CloudDetectActivity.shared
     /// v2.50：云端有更新 → 顶栏常驻横幅，只有手动点 ✕ 才收起（此前 toast 不到 1 秒就消失，容易错过）
     @State private var cloudUpdateBannerVisible = false
     // v1.68：云端媒体对账确认（先干跑列桶 → 弹确认 → 确认后才上传）+ 同步任务进度/最小化
@@ -256,6 +306,19 @@ struct HouseListView: View {
                         .padding(.vertical, 7)
                         .background(.ultraThinMaterial, in: Capsule())
                         .transition(.move(edge: .top).combined(with: .opacity))
+                    } else if detectActivity.isDetecting {
+                        // v2.63（b121 回归）：自动检测期间的细进度条提示；
+                        // 手动刷新/同步优先（isSyncing 为真时上面那条占了位置），两者不会叠在一起。
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text("正在检测云端变更…")
+                                .font(.footnote.weight(.medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     if let toast = infoToast {
                         HStack(spacing: 6) {
@@ -295,6 +358,8 @@ struct HouseListView: View {
                                 Task { await syncCloudHouses(deep: true) }
                             }
                         )
+                        // v2.63：同步进行中禁用按钮（点按与长按都生效），配合入口重入保护，连点不会再开第二份任务
+                        .disabled(isSyncing)
                         // v1.21：多选分享入口（v1.59 移到左上角）
                         Button {
                             isSelecting = true
@@ -566,6 +631,18 @@ struct HouseListView: View {
         if await MainActor.run(body: { Self.hasRunningHouseUpload() }) {
             return .noChange
         }
+
+        // v2.63：手动云端同步（左上角刷新/长按深度刷新）进行中时直接跳过检测——
+        // 两边都要拉云端清单，并发会重复请求，检测基于同步中途的中间态也不可信。
+        // 下拉刷新是纯本地媒体对账、不联网，不在此列，只靠 UI 让位（手动优先）。
+        if await MainActor.run(body: { CloudDetectActivity.shared.isManualSyncing }) {
+            return .noChange
+        }
+
+        // v2.63（b121 回归）：从这里开始算「正在检测」——房源页顶部显示细进度条 +「正在检测云端变更…」；
+        // 无论正常结束、无变化、失败还是提前返回，都由 defer 统一熄灭，且至少展示 0.6 秒。
+        await MainActor.run { CloudDetectActivity.shared.beginDetecting() }
+        defer { DispatchQueue.main.async { CloudDetectActivity.shared.endDetecting() } }
 
         // 45 秒节流：只复用「无变化」（v2.62：hasUpdate 不再复用，避免旧结论反复弹横幅）
         let now = Date().timeIntervalSince1970
@@ -1696,6 +1773,8 @@ struct HouseListView: View {
     /// 磁盘有而记录没有 → 自动补建媒体记录；记录有而磁盘没有 → 提示待云端回补；
     /// 无对应房源的目录 → 提示可扫描补录。有变化列明细，无变化提示「已刷新，无变化」。
     private func localRefreshWithMediaCheck() async {
+        // v2.63：重入保护——连续下拉两次时不并发跑两份本地对账，避免同一文件被重复插入媒体记录
+        guard !isSyncing else { return }
         isSyncing = true   // v1.72（#5）：本地刷新同样给出「正在刷新」反馈
         defer { isSyncing = false }
         guard let ctx = houseModelContext else { return }
@@ -1803,8 +1882,13 @@ struct HouseListView: View {
     /// 第二次仍失败才提示。retriedOnce 防止重试套娃无限递归。
     @discardableResult
     private func syncCloudHouses(retriedOnce: Bool = false, retryTaskID: UUID? = nil, deep: Bool = false) async -> CloudPullRunOutcome {
+        // v2.63：重入保护——连点/长按两次不再并发跑两份云端同步（并发会重复拉清单、进度互相覆盖）
+        guard !isSyncing else { return .failed("正在同步中，请稍候") }
         isSyncing = true   // v1.72（#5）：点击立即反馈「正在刷新」
         defer { isSyncing = false }
+        // v2.63：标记「手动云端同步进行中」——自动检测看到这个标记直接跳过，两边不会同时拉清单
+        await MainActor.run { CloudDetectActivity.shared.beginManualSync() }
+        defer { DispatchQueue.main.async { CloudDetectActivity.shared.endManualSync() } }
         let config = CosConfig.load()
         guard let config else {
             let message = RemoteConfig.tip("noCloudConfig", "未配置云存储，无法同步云端房源")
