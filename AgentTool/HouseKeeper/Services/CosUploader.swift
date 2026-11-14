@@ -3970,9 +3970,11 @@ extension CloudHouseSync {
     static func manifestPath() -> String { "h/_manifest.json" }
 
     /// 拉总清单（404 → nil；网络/解析失败 throw）
+    /// v2.65：带 ETag 缓存——清单没变时服务端回 304，直接复用本地副本，省掉每次 37KB 的重复传输。
     static func fetchManifest(config: CosConfig) async throws -> CloudManifest? {
         do {
-            let data = try await CosUploader.fetchObjectData(path: manifestPath(), config: config)
+            let data = try await CosUploader.fetchObjectDataCached(
+                path: manifestPath(), cacheKey: "manifest", config: config)
             return try JSONDecoder().decode(CloudManifest.self, from: data)
         } catch let e as CosObjectNotFoundError {
             return nil

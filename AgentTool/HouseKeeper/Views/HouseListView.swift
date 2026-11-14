@@ -138,6 +138,8 @@ struct HouseListView: View {
     @State private var isSyncing = false
     /// v2.63：自动检测指示状态（冷启动 / 回前台 / 进板块兜底三条路径共用同一个全局状态）
     @StateObject private var detectActivity = CloudDetectActivity.shared
+    /// v2.65：长按触发的深度核对与普通刷新分开提示（否则长按后只显示「正在刷新…」，看不出走的是哪条路）
+    @State private var isDeepSyncing = false
     /// v2.50：云端有更新 → 顶栏常驻横幅，只有手动点 ✕ 才收起（此前 toast 不到 1 秒就消失，容易错过）
     @State private var cloudUpdateBannerVisible = false
     // v1.68：云端媒体对账确认（先干跑列桶 → 弹确认 → 确认后才上传）+ 同步任务进度/最小化
@@ -298,7 +300,7 @@ struct HouseListView: View {
                     if isSyncing {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small)
-                            Text("正在刷新…")
+                            Text(isDeepSyncing ? "正在深度核对…" : "正在刷新…")
                                 .font(.footnote.weight(.medium))
                                 .foregroundColor(.secondary)
                         }
@@ -1905,7 +1907,11 @@ struct HouseListView: View {
         // v2.63：重入保护——连点/长按两次不再并发跑两份云端同步（并发会重复拉清单、进度互相覆盖）
         guard !isSyncing else { return .failed("正在同步中，请稍候") }
         isSyncing = true   // v1.72（#5）：点击立即反馈「正在刷新」
-        defer { isSyncing = false }
+        isDeepSyncing = deep   // v2.65：长按（deep）显示「正在深度核对…」，普通点按仍是「正在刷新…」
+        defer {
+            isSyncing = false
+            isDeepSyncing = false
+        }
         // v2.63：标记「手动云端同步进行中」——自动检测看到这个标记直接跳过，两边不会同时拉清单
         await MainActor.run { CloudDetectActivity.shared.beginManualSync() }
         defer { DispatchQueue.main.async { CloudDetectActivity.shared.endManualSync() } }
