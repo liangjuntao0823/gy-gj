@@ -799,43 +799,63 @@ struct HouseListView: View {
             return .noChange
         }
 
-        // 有嫌疑：只拉这些房间的完整账本，按实际内容（8 字段 + 媒体 canonicalKey）精确判定
+        // 有嫌疑：只拉这些房间的完整账本，按实际内容（8 字段 + 媒体 canonicalKey）精确判定。
+        // v2.64：改成 16 并发窗口 + ETag 复用（fetchRecords）。原来这里是逐套串行 await，
+        // 一旦清单缺指纹（v2.62 前写入的旧清单 mediaHash/fieldsHash 全为 nil → 每条都判嫌疑），
+        // 218 套就是 218 个串行往返 ≈ 20 秒；同一批请求并发后 2~3 秒。
+        let fetchedRecords: [CloudHouseRecord]
+        do {
+            fetchedRecords = try await CloudHouseSync.fetchRecords(keys: suspectKeys, config: config)
+        } catch {
+            // 网络/解析失败：既不能当无变化也不能当有更新，按检测失败处理
+            return .detectFailed
+        }
+        let fetchedKeys = Set(fetchedRecords.map { $0.roomKey })
+        // 清单有条目但 info.json 404（目录为空/已删）：这是「清单幽灵」脏数据，不是真实更新
+        let ghostKeys = suspectKeys.filter { !fetchedKeys.contains($0) }
+        var recByKey: [String: CloudHouseRecord] = [:]
+        for rec in fetchedRecords { recByKey[rec.roomKey] = rec }
+
         var hasRealChange = false
-        var ghostKeys: [String] = []
         for key in suspectKeys {
-            do {
-                let rec = try await CloudHouseSync.fetchOne(roomKey: key, config: config)
-                guard let rec else {
-                    // 清单有条目但 info.json 已 404（目录为空/已删）：这是「清单幽灵」脏数据，
-                    // 不是真实更新——收集后统一从清单摘除自愈，绝不能据此每次误报「云端有更新」。
-                    ghostKeys.append(key)
-                    continue
-                }
-                guard let h = localByKey[key] else {
-                    hasRealChange = true   // 云端账本真实存在、本地确实没有这套房
-                    continue
-                }
-                if cloudRecordDiffers(rec, from: h) != nil { hasRealChange = true }
-            } catch {
-                // 网络/解析失败：既不能当无变化也不能当有更新，按检测失败处理
-                return .detectFailed
+            guard let rec = recByKey[key] else { continue }
+            guard let h = localByKey[key] else {
+                hasRealChange = true   // 云端账本真实存在、本地确实没有这套房
+                continue
             }
+            if cloudRecordDiffers(rec, from: h) != nil { hasRealChange = true }
         }
 
-        // 自愈：把清单里的幽灵条目摘掉（读-改-写；失败记日志，下次检测再补，不影响本次结论）
-        if !ghostKeys.isEmpty {
+        // v2.64：顺手回填清单指纹。旧清单（v2.62 之前写入）每条的 mediaHash / fieldsHash 都是 nil，
+        // 判定处 `guard let ... else { return true }` 会把全部房源当成「必须拉明细」，导致每次检测
+        // 都全量拉一遍（20 秒+），而检测路径原来只写 revision 基线、从不修清单，所以永远修不好。
+        // 本次已经拿到这些房的明细，直接按真实记录补写回清单（读-改-写；失败只记日志，下次再补）。
+        let needsFingerprintBackfill = manifest.rooms.contains { $0.mediaHash == nil || $0.fieldsHash == nil }
+        var baselineManifest = manifest
+        if needsFingerprintBackfill || !ghostKeys.isEmpty {
+            var upserts: [String: CloudManifestEntry] = [:]
+            if needsFingerprintBackfill {
+                for rec in fetchedRecords { upserts[rec.roomKey] = CloudManifestEntry(record: rec) }
+            }
             do {
                 try await CloudHouseSync.applyManifestChanges(
-                    upserts: [:], removes: Set(ghostKeys), config: config)
+                    upserts: upserts, removes: Set(ghostKeys), config: config)
+                // 回填成功：按「回填后的清单」记基线。回填条目的 revision 取自明细，
+                // 可能与旧清单条目不同；若仍按旧清单记基线，下一次会因 revision 错位再全量拉一遍。
+                var merged = Dictionary(manifest.rooms.map { ($0.roomKey, $0) }, uniquingKeysWith: { first, _ in first })
+                for (key, entry) in upserts { merged[key] = entry }
+                for key in ghostKeys { merged[key] = nil }
+                baselineManifest = CloudManifest(version: manifest.version, revision: manifest.revision + 1,
+                                                 generatedAt: Date(), rooms: Array(merged.values))
             } catch {
-                BackupLogStore.log(category: "同步", action: "清理清单幽灵", result: "失败",
-                                  detail: "清单幽灵 \(ghostKeys.joined(separator: "、")) 本次未摘除：\(error.localizedDescription)，下次检测再补",
+                BackupLogStore.log(category: "同步", action: "回填清单摘要", result: "失败",
+                                  detail: "清单 \(upserts.count) 套指纹未回填、幽灵 \(ghostKeys.count) 套未摘除：\(error.localizedDescription)，下次检测再补",
                                   cloud: true)
             }
         }
 
         // 关键：无论是否真有差异，都把当前 manifest revision 记为基线，让 revision 错位自愈、不再卡住
-        rememberManifestBaseline(manifest)
+        rememberManifestBaseline(baselineManifest)
         return hasRealChange ? .hasUpdate : .noChange
     }
 

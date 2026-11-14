@@ -4223,8 +4223,16 @@ extension CloudHouseSync {
         // 清单有条目但 info.json 已 404（目录还在、账本已删）→ 从清单摘除，避免这套房每次刷新都被判 suspect。
         // 注意：解析失败会在 fetchRecords 里重试后 throw，走不到这里，所以缺失的只可能是 404。
         let missingKeys = suspectSet.subtracting(Set(records.map { $0.roomKey }))
-        if !missingKeys.isEmpty {
-            try? await applyManifestChanges(upserts: [:], removes: missingKeys, config: config)
+        // v2.64：顺手回填缺指纹的清单条目。旧清单（v2.62 之前写入）mediaHash / fieldsHash 全是 nil，
+        // manifestEntryIsSuspect 会把每条都判成「要拉明细」，于是每次刷新都全量拉一遍（218 套 ≈ 15 秒）；
+        // 而这里原来只在 24h 全量分支重建清单，指纹机制长期不生效。本次已拉到明细，直接回填（一次读写）。
+        let needsFingerprintBackfill = (manifest?.rooms ?? []).contains { $0.mediaHash == nil || $0.fieldsHash == nil }
+        if !missingKeys.isEmpty || needsFingerprintBackfill {
+            var upserts: [String: CloudManifestEntry] = [:]
+            if needsFingerprintBackfill {
+                for rec in records { upserts[rec.roomKey] = CloudManifestEntry(record: rec) }
+            }
+            try? await applyManifestChanges(upserts: upserts, removes: missingKeys, config: config)
         }
         return IncrementalResult(records: records, cloudKeys: cloudKeys,
                                  unchangedCount: roomKeys.count - suspectSet.count, usedFullScan: false,
