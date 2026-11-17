@@ -185,7 +185,8 @@ enum HouseSyncGuard {
     static func apply(record: CloudHouseRecord, to house: House, ctx: ModelContext, config: CosConfig) async throws -> String {
         var parts: [String] = []
         let diffs = fieldDiffs(record: record, house: house)
-        if !diffs.isEmpty { parts.append("更新 \(diffs.count) 项字段") }
+        // 字段差异直接带人话明细（如「租金：1400 元 → 1500 元」），不再只记数量
+        if !diffs.isEmpty { parts.append(diffs.joined(separator: "、")) }
 
         house.roomNo = record.roomNo
         house.tower = record.tower
@@ -252,9 +253,11 @@ enum HouseSyncGuard {
             parts.append("移除" + HouseLedgerFormat.mediaSummary(images: rm.images.count, videos: rm.videos.count))
         }
         if parts.isEmpty { parts.append("已更新到云端最新") }
+        // 云端→本机的拉平动作只记本机操作区，不上云端公共日志（与批量同步「云端更新本机」口径一致）；
+        // 云端公共区只保留本机→云端的写 / 删 / 补传操作。
         BackupLogStore.log(category: "同步", action: "单房更新", result: "成功",
                           detail: "\(record.roomKey)：\(parts.joined(separator: "，"))",
-                          room: record.roomKey, cloud: true)
+                          room: record.roomKey, cloud: false)
         return parts.joined(separator: "，")
     }
 }
