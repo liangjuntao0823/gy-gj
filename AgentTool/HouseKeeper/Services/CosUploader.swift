@@ -3659,27 +3659,122 @@ struct CloudOpsResponse: Codable {
     let records: [CloudOpEntry]
 }
 
+// MARK: - v2.67 公共日志待补推队列
+/// 公共日志上云失败时落本地 UserDefaults，启动/回前台自动补推；
+/// 对齐电脑端「等响应 + 校验结果 + 失败重试」口径，解决老版本 fire-and-forget 静默丢日志。
+enum CloudOpPendingQueue {
+    struct Item: Codable, Equatable, Hashable {
+        let category: String
+        let action: String
+        let result: String
+        let detail: String
+        let room: String
+        let uname: String
+        let date: Date
+    }
+
+    private static var pendingKey: String { "cloudOpPending.\(CloudUser.safeName)" }
+    private static let maxCount = 100
+    private static let retentionDays: Double = 45
+
+    static func items() -> [Item] {
+        guard let data = UserDefaults.standard.data(forKey: pendingKey),
+              let list = try? JSONDecoder().decode([Item].self, from: data) else { return [] }
+        return list
+    }
+
+    private static func save(_ list: [Item]) {
+        if let data = try? JSONEncoder().encode(list) {
+            UserDefaults.standard.set(data, forKey: pendingKey)
+        }
+    }
+
+    private static func signature(_ item: Item) -> String {
+        "\(item.category)·\(item.action)·\(item.result)|\(item.room)|\(item.uname)|\(item.detail)"
+    }
+
+    static func enqueue(_ item: Item) {
+        var list = items()
+        let sig = signature(item)
+        guard !list.contains(where: { signature($0) == sig }) else { return }
+        list.append(item)
+        if list.count > maxCount { list = Array(list.suffix(maxCount)) }
+        save(list)
+    }
+
+    static func remove(_ item: Item) {
+        let sig = signature(item)
+        save(items().filter { signature($0) != sig })
+    }
+
+    static func flushExpired() {
+        let cutoff = Date().addingTimeInterval(-retentionDays * 86400)
+        save(items().filter { $0.date >= cutoff })
+    }
+}
+
 enum CloudOps {
     static var isConfigured: Bool {
         !CloudConfig.functionURL.isEmpty && !CloudConfig.passwordHash.isEmpty
     }
     private static var baseURL: URL? { URL(string: CloudConfig.functionURL) }
 
-    /// 本机发起云端操作 → 写一条云端操作记录（带当前用户名）
+    /// 本机发起云端操作 → 写一条云端操作记录（带当前用户名）。
+    /// v2.67：入口不阻塞调用方，后台等待响应并校验结果；失败入待补队列，启动/回前台自动补推。
     static func log(category: String, action: String, result: String, detail: String, room: String = "") {
-        guard isConfigured, let base = baseURL else { return }
-        let op = "\(category)·\(action)·\(result)"
-        var q = URLComponents()
-        q.queryItems = [
-            .init(name: "act", value: "logOp"),
-            .init(name: "k", value: CloudConfig.passwordHash),
-            .init(name: "op", value: op),
-            .init(name: "room", value: room),
-            .init(name: "uname", value: CloudUser.username),
-            .init(name: "detail", value: detail),
-        ]
-        guard let query = q.percentEncodedQuery, let url = URL(string: base.absoluteString + "?" + query) else { return }
-        URLSession.shared.dataTask(with: url).resume()
+        guard isConfigured, baseURL != nil else { return }
+        let item = CloudOpPendingQueue.Item(
+            category: category, action: action, result: result,
+            detail: detail, room: room, uname: CloudUser.username, date: Date())
+        Task.detached {
+            let ok = await CloudOps.send(item)
+            if !ok { CloudOpPendingQueue.enqueue(item) }
+        }
+    }
+
+    /// 发送单条公共日志，最多 3 次尝试（首次 + 2 次退避 350ms/700ms）；返回是否最终上云成功。
+    @discardableResult
+    static func send(_ item: CloudOpPendingQueue.Item) async -> Bool {
+        guard isConfigured, let base = baseURL else { return false }
+        let op = "\(item.category)·\(item.action)·\(item.result)"
+        for attempt in 0..<3 {
+            if attempt > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(350 * attempt) * 1_000_000_000)
+            }
+            do {
+                var q = URLComponents()
+                q.queryItems = [
+                    .init(name: "act", value: "logOp"),
+                    .init(name: "k", value: CloudConfig.passwordHash),
+                    .init(name: "op", value: op),
+                    .init(name: "room", value: item.room),
+                    .init(name: "uname", value: item.uname),
+                    .init(name: "detail", value: item.detail),
+                ]
+                guard let query = q.percentEncodedQuery,
+                      let url = URL(string: base.absoluteString + "?" + query) else { return false }
+                let (data, response) = try await CosNetwork.session.data(from: url)
+                guard let http = response as? HTTPURLResponse,
+                      (200..<300).contains(http.statusCode) else { continue }
+                // 对齐电脑端 LooksOk：body 显式 ok=false 才判失败；解析不出 ok 字段视为成功。
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let ok = json["ok"] as? Bool, !ok { continue }
+                return true
+            } catch {
+                continue
+            }
+        }
+        return false
+    }
+
+    /// 启动/回前台补推积压的待上云日志；成功出队，仍失败留队等下次。串行发送，避免同时打云函数。
+    static func flushPending() async {
+        CloudOpPendingQueue.flushExpired()
+        guard isConfigured else { return }
+        for item in CloudOpPendingQueue.items() {
+            let ok = await CloudOps.send(item)
+            if ok { CloudOpPendingQueue.remove(item) }
+        }
     }
 
     /// 拉取云端操作记录（日志查看器云端区）
