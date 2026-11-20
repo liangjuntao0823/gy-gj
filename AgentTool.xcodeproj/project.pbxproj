@@ -92,6 +92,8 @@
 		SE17 /* SharedBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = SF01 /* SharedBridge.swift */; };
 		SE18 /* ShareModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = SF02 /* ShareModels.swift */; };
 		SE19 /* CloudBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000110 /* CloudBackupService.swift */; };
+		SE20 /* AppIcon60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = SF09 /* AppIcon60x60@2x.png */; };
+		SE21 /* AppIcon76x76@2x~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = SF10 /* AppIcon76x76@2x~ipad.png */; };
 		SE01 /* CosUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000101 /* CosUploader.swift */; };
 		SE02 /* MediaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000102 /* MediaStore.swift */; };
 		SE03 /* House.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000010000000000000100 /* House.swift */; };
@@ -204,6 +206,8 @@
 		SF06 /* AgentToolShare.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; path = AgentToolShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		SF07 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		SF08 /* AgentToolShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AgentToolShare.entitlements; sourceTree = "<group>"; };
+		SF09 /* AppIcon60x60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon60x60@2x.png"; sourceTree = "<group>"; };
+		SF10 /* AppIcon76x76@2x~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon76x76@2x~ipad.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -364,7 +368,7 @@
 			sourceTree = "<group>";
 		};
 		WG /* AgentToolWidget */ = {isa = PBXGroup; children = (W2 /* AgentToolWidget.swift */, W5 /* Info.plist */,); path = AgentToolWidget; sourceTree = "<group>"; };
-		SG /* AgentToolShare */ = {isa = PBXGroup; children = (SF03 /* ShareViewController.swift */, SF04 /* SharePanelView.swift */, SF05 /* ShareUploadCoordinator.swift */, SF07 /* Info.plist */, SF08 /* AgentToolShare.entitlements */,); path = AgentToolShare; sourceTree = "<group>"; };
+		SG /* AgentToolShare */ = {isa = PBXGroup; children = (SF03 /* ShareViewController.swift */, SF04 /* SharePanelView.swift */, SF05 /* ShareUploadCoordinator.swift */, SF07 /* Info.plist */, SF08 /* AgentToolShare.entitlements */, SF09 /* AppIcon60x60@2x.png */, SF10 /* AppIcon76x76@2x~ipad.png */,); path = AgentToolShare; sourceTree = "<group>"; };
 		D10000010000000000000008 /* HouseKeeper */ = {
 			isa = PBXGroup;
 			children = (
@@ -498,7 +502,7 @@
 			productType = "com.apple.product-type.application";
 		};
 		WT /* AgentToolWidget */ = {isa = PBXNativeTarget; buildConfigurationList = WC; buildPhases = (WP,); buildRules = (); dependencies = (); name = AgentToolWidget; productName = AgentToolWidget; productReference = W4; productType = "com.apple.product-type.app-extension"; };
-		ST /* AgentToolShare */ = {isa = PBXNativeTarget; buildConfigurationList = SC; buildPhases = (SS,); buildRules = (); dependencies = (); name = AgentToolShare; productName = AgentToolShare; productReference = SF06; productType = "com.apple.product-type.app-extension"; };
+		ST /* AgentToolShare */ = {isa = PBXNativeTarget; buildConfigurationList = SC; buildPhases = (SS, SRES,); buildRules = (); dependencies = (); name = AgentToolShare; productName = AgentToolShare; productReference = SF06; productType = "com.apple.product-type.app-extension"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -546,6 +550,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		SRES /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (SE20 /* AppIcon60x60@2x.png in Resources */, SE21 /* AppIcon76x76@2x~ipad.png in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -692,7 +697,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = AgentTool/AgentTool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 198;
+				CURRENT_PROJECT_VERSION = 199;
 				DEVELOPMENT_ASSET_PATHS = "\"AgentTool/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -712,7 +717,7 @@ INFOPLIST_KEY_NSLocalNetworkUsageDescription = "仅在你点击同步时连接�
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.68;
+				MARKETING_VERSION = 2.69;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -727,7 +732,7 @@ INFOPLIST_KEY_NSLocalNetworkUsageDescription = "仅在你点击同步时连接�
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = AgentTool/AgentTool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 198;
+				CURRENT_PROJECT_VERSION = 199;
 				DEVELOPMENT_ASSET_PATHS = "\"AgentTool/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -747,7 +752,7 @@ INFOPLIST_KEY_NSLocalNetworkUsageDescription = "仅在你点击同步时连接�
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.68;
+				MARKETING_VERSION = 2.69;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -756,10 +761,10 @@ INFOPLIST_KEY_NSLocalNetworkUsageDescription = "仅在你点击同步时连接�
 			};
 			name = Release;
 		};
-		WD = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolWidget/AgentToolWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 198; INFOPLIST_FILE = AgentToolWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 2.68; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.widget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
-		WR = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolWidget/AgentToolWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 198; INFOPLIST_FILE = AgentToolWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 2.68; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.widget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
-		SD = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolShare/AgentToolShare.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 198; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AgentToolShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 2.68; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.share; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; APPLICATION_EXTENSION_API_ONLY = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_EXTENSION $(inherited)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
-		SR = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolShare/AgentToolShare.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 198; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AgentToolShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 2.68; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.share; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; APPLICATION_EXTENSION_API_ONLY = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_EXTENSION $(inherited)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+		WD = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolWidget/AgentToolWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 199; INFOPLIST_FILE = AgentToolWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 2.69; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.widget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+		WR = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolWidget/AgentToolWidget.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 199; INFOPLIST_FILE = AgentToolWidget/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 2.69; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.widget; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+		SD = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolShare/AgentToolShare.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 199; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AgentToolShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 2.69; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.share; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; APPLICATION_EXTENSION_API_ONLY = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_EXTENSION $(inherited)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+		SR = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_ENTITLEMENTS = AgentToolShare/AgentToolShare.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 199; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AgentToolShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 2.69; PRODUCT_BUNDLE_IDENTIFIER = com.gj.tg.share; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SKIP_INSTALL = YES; APPLICATION_EXTENSION_API_ONLY = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "APP_EXTENSION $(inherited)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */

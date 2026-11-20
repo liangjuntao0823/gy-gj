@@ -4,8 +4,9 @@ import UniformTypeIdentifiers
 import UserNotifications
 
 /// v2.68 分享扩展入口：相册共享菜单下方动作列表「保存到公寓管家」。
-/// 自定义 principal VC（非 SLComposeServiceViewController）→ 系统把它放进下方动作列表，
-/// 与「保存到美柚」并排，而不是上方 App 排。
+/// v2.69 修正：下方动作列表（与「保存到美柚」并排）只认 Action Extension
+/// （com.apple.ui-services）；share-services 只会进上方 App 排。故扩展点改为 ui-services，
+/// 自定义 principal VC 承载选房面板，并可在「编辑操作」里开关/排序。
 class ShareViewController: UIViewController {
 
     private var staged: [ShareUploadCoordinator.StagedItem] = []
@@ -37,8 +38,8 @@ class ShareViewController: UIViewController {
                 }
             }
         }
-        // 与 App 选媒体同量级上限，防一次性塞爆扩展内存
-        for provider in providers.prefix(30) {
+        // 与 Info.plist 激活上限同口径（50），防一次性塞爆扩展内存
+        for provider in providers.prefix(50) {
             let isVideo = provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier)
             let typeID = isVideo ? UTType.movie.identifier : UTType.image.identifier
             guard let url = await loadFile(provider: provider, typeID: typeID) else { continue }

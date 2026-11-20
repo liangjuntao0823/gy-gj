@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// v2.68 分享面板：选已有房号追加媒体 / 填表新增房源。
-/// 自定义 principal VC 承载 → 落在共享菜单下方动作列表（与「保存到美柚」并排）。
+/// v2.69：Action Extension（com.apple.ui-services）承载 → 落在共享菜单下方动作列表
+/// （与「保存到美柚」并排），并可在「编辑操作」里开关/排序。
 struct SharePanelView: View {
     let staged: [ShareUploadCoordinator.StagedItem]
     let onFinish: () -> Void
