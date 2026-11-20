@@ -254,7 +254,7 @@
 			target = WT /* AgentToolWidget */;
 			targetProxy = TP /* PBXContainerItemProxy */;
 		};
-		SD /* PBXTargetDependency */ = {
+		SDP /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = ST /* AgentToolShare */;
 			targetProxy = SP /* PBXContainerItemProxy */;
@@ -474,7 +474,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		WP = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (W1 /* AgentToolWidget.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
-		SP = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (SE01 /* CosUploader.swift in Sources */, SE02 /* MediaStore.swift in Sources */, SE03 /* House.swift in Sources */, SE04 /* HouseLedger.swift in Sources */, SE05 /* HouseMediaUploadQueue.swift in Sources */, SE06 /* MediaActivityGate.swift in Sources */, SE07 /* NetworkMonitor.swift in Sources */, SE08 /* RemoteConfig.swift in Sources */, SE09 /* BackupLogStore.swift in Sources */, SE10 /* HouseActionNotifier.swift in Sources */, SE11 /* SharedBridge.swift in Sources */, SE12 /* ShareModels.swift in Sources */, SE13 /* ShareViewController.swift in Sources */, SE14 /* SharePanelView.swift in Sources */, SE15 /* ShareUploadCoordinator.swift in Sources */, SE19 /* CloudBackupService.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		SS = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (SE01 /* CosUploader.swift in Sources */, SE02 /* MediaStore.swift in Sources */, SE03 /* House.swift in Sources */, SE04 /* HouseLedger.swift in Sources */, SE05 /* HouseMediaUploadQueue.swift in Sources */, SE06 /* MediaActivityGate.swift in Sources */, SE07 /* NetworkMonitor.swift in Sources */, SE08 /* RemoteConfig.swift in Sources */, SE09 /* BackupLogStore.swift in Sources */, SE10 /* HouseActionNotifier.swift in Sources */, SE11 /* SharedBridge.swift in Sources */, SE12 /* ShareModels.swift in Sources */, SE13 /* ShareViewController.swift in Sources */, SE14 /* SharePanelView.swift in Sources */, SE15 /* ShareUploadCoordinator.swift in Sources */, SE19 /* CloudBackupService.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 /* Begin PBXNativeTarget section */
 		E10000010000000000000001 /* AgentTool */ = {
@@ -490,7 +490,7 @@
 			);
 			dependencies = (
 				TD /* PBXTargetDependency */,
-				SD /* PBXTargetDependency */,
+				SDP /* PBXTargetDependency */,
 			);
 			name = AgentTool;
 			productName = AgentTool;
@@ -498,7 +498,7 @@
 			productType = "com.apple.product-type.application";
 		};
 		WT /* AgentToolWidget */ = {isa = PBXNativeTarget; buildConfigurationList = WC; buildPhases = (WP,); buildRules = (); dependencies = (); name = AgentToolWidget; productName = AgentToolWidget; productReference = W4; productType = "com.apple.product-type.app-extension"; };
-		ST /* AgentToolShare */ = {isa = PBXNativeTarget; buildConfigurationList = SC; buildPhases = (SP,); buildRules = (); dependencies = (); name = AgentToolShare; productName = AgentToolShare; productReference = SF06; productType = "com.apple.product-type.app-extension"; };
+		ST /* AgentToolShare */ = {isa = PBXNativeTarget; buildConfigurationList = SC; buildPhases = (SS,); buildRules = (); dependencies = (); name = AgentToolShare; productName = AgentToolShare; productReference = SF06; productType = "com.apple.product-type.app-extension"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
