@@ -103,7 +103,7 @@ final class ShareUploadCoordinator: ObservableObject {
             return MediaStore.saveFile(from: item.url, roomKey: roomKey)
         }
         return autoreleasepool { () -> String? in
-            guard let image = UIImage(contentsOf: item.url.path),
+            guard let image = UIImage(contentsOfFile: item.url.path),
                   let jpeg = image.jpegData(compressionQuality: 0.85) else { return nil }
             return MediaStore.save(data: jpeg, ext: "jpg", roomKey: roomKey)
         }
