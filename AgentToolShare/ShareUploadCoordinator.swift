@@ -180,7 +180,7 @@ final class ShareUploadCoordinator: ObservableObject {
         }
 
         // 4) 媒体阶段日志（与 uploadMedia 逐字同口径）
-        let upSplit = HouseLedgerFormat.split(saved)
+        let upSplit = HouseLedgerFormat.split(saved.map { (name: $0.fileName, kind: $0.kind) })
         let upParts = HouseLedgerFormat.mediaParts(images: upSplit.images, videos: upSplit.videos, includeNames: false)
         if out.failed > 0 {
             let upAction = isNewHouse ? "新增房源" : "新增媒体（本地→云端）"
@@ -201,7 +201,7 @@ final class ShareUploadCoordinator: ObservableObject {
 
         // 5) 账本事件 + 记录推送（新增：先媒体后账本；失败文件名不进 mediaNames）
         phaseText = "同步账本"
-        let successSplit = HouseLedgerFormat.split(saved.filter { successNames.contains($0.fileName) })
+        let successSplit = HouseLedgerFormat.split(saved.filter { successNames.contains($0.fileName) }.map { (name: $0.fileName, kind: $0.kind) })
         var record: CloudHouseRecord
         let action: String
         let changeText: String
