@@ -9,6 +9,7 @@ on:
       - "AgentTool/**"
       - "AgentTool.xcodeproj/**"
       - "AgentToolWidget/**"
+      - "AgentToolShare/**"
       - ".github/workflows/build.yml"
   pull_request:
     branches:
@@ -17,6 +18,7 @@ on:
       - "AgentTool/**"
       - "AgentTool.xcodeproj/**"
       - "AgentToolWidget/**"
+      - "AgentToolShare/**"
       - ".github/workflows/build.yml"
 
 permissions:
@@ -93,7 +95,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             clean build | tee xcodebuild.log
-      - name: Ad-hoc sign App and Widget with App Group entitlements
+      - name: Ad-hoc sign App, Widget and Share Extension with App Group entitlements
         shell: bash
         env:
           PRODUCT_NAME: ${{ steps.metadata.outputs.product_name }}
@@ -101,10 +103,14 @@ jobs:
           set -euo pipefail
           APP_PATH="$DERIVED_DATA_PATH/Build/Products/${CONFIGURATION}-iphoneos/$PRODUCT_NAME"
           WIDGET_PATH="$APP_PATH/PlugIns/AgentToolWidget.appex"
+          SHARE_PATH="$APP_PATH/PlugIns/AgentToolShare.appex"
           test -d "$APP_PATH"
           if [[ -d "$WIDGET_PATH" ]]; then
             /usr/bin/codesign --force --sign - --entitlements AgentToolWidget/AgentToolWidget.entitlements --deep "$WIDGET_PATH"
           fi
+          # v2.68：分享扩展必须带 App Group entitlements 单独签，再签主 App
+          test -d "$SHARE_PATH"
+          /usr/bin/codesign --force --sign - --entitlements AgentToolShare/AgentToolShare.entitlements --deep "$SHARE_PATH"
           /usr/bin/codesign --force --sign - --entitlements AgentTool/AgentTool.entitlements --deep "$APP_PATH"
           /usr/bin/codesign --verify --deep --strict "$APP_PATH"
       - name: Package unsigned IPA

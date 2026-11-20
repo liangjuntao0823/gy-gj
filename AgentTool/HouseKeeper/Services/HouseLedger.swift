@@ -234,19 +234,39 @@ enum HouseLedgerStore {
 
     // MARK: 待同步（离线/失败）名单
 
+    /// v2.68：dirty 名单改存 App Group 共享区——扩展同步失败的房号，主 App 启动 syncAll 同一份接手。
     static func dirtyRoomKeys() -> [String] {
-        (UserDefaults.standard.stringArray(forKey: dirtyKey) ?? []).filter { !$0.isEmpty }
+        SharedBridge.migrateKey(dirtyKey)
+        return (SharedBridge.defaults.stringArray(forKey: dirtyKey) ?? []).filter { !$0.isEmpty }
     }
     static func markDirty(_ roomKey: String) {
         guard !roomKey.isEmpty else { return }
         var set = Set(dirtyRoomKeys())
         set.insert(roomKey)
-        UserDefaults.standard.set(Array(set), forKey: dirtyKey)
+        SharedBridge.defaults.set(Array(set), forKey: dirtyKey)
     }
     static func clearDirty(_ roomKey: String) {
         var set = Set(dirtyRoomKeys())
         set.remove(roomKey)
-        UserDefaults.standard.set(Array(set), forKey: dirtyKey)
+        SharedBridge.defaults.set(Array(set), forKey: dirtyKey)
+    }
+
+    /// v2.68：收养分享扩展留在共享容器的待确认账本事件（按 id 去重并入本进程 pending），
+    /// 随后删除共享 pending 文件。扩展模式 local==shared 跳过。
+    /// 事件仍守 v2.52 口径：云端同步成功后才并入正式账本。
+    static func adoptSharedPending(roomKey: String) {
+        guard !MediaStore.useSharedContainer, let shared = MediaStore.sharedMediaDirectory else { return }
+        let sharedPending = shared.appendingPathComponent(roomKey, isDirectory: true).appendingPathComponent(pendingFileName)
+        guard let data = try? Data(contentsOf: sharedPending),
+              let events = try? JSONDecoder().decode([HouseLedgerEvent].self, from: data),
+              !events.isEmpty else { return }
+        fileLock.lock()
+        var pending = loadPendingUnlocked(roomKey: roomKey)
+        let known = Set(pending.map { $0.id })
+        pending.append(contentsOf: events.filter { !known.contains($0.id) })
+        savePendingUnlocked(roomKey: roomKey, events: pending)
+        fileLock.unlock()
+        try? FileManager.default.removeItem(at: sharedPending)
     }
 
     /// v2.52：有云配置就后台合并上传；无配置/无效配置也标记待同步，配置好后启动自动补
@@ -286,6 +306,8 @@ enum HouseLedgerStore {
     /// 单房合并上传：拉远端 → 正式账本+待确认事件一并并集 → 写回；
     /// 弱网/写失败重试一轮，仍失败上抛。成功后待确认事件才并入正式账本并清 pending。
     static func sync(roomKey: String, config: CosConfig) async throws {
+        // v2.68：先收养扩展留在共享容器的待确认事件，再走原有合并上传
+        adoptSharedPending(roomKey: roomKey)
         // 目录已被删除（如删房后云端失败残留的 dirty 名单）：正式账本与 pending 都不在才清标记，
         // 只剩 pending 时必须继续同步，否则待确认事件永远无法落地
         let hasLedger = FileManager.default.fileExists(atPath: localURL(roomKey: roomKey).path)

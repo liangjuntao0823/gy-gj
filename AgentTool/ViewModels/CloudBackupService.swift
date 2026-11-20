@@ -87,6 +87,7 @@ final class CloudBackupService {
         UserDefaults.standard.set(list, forKey: pendingKey)
     }
 
+#if !APP_EXTENSION // v2.68：分享扩展不编译备份 zip 链路（依赖 BackupV5Manager/ZipStore/MediaFingerprintV5）
     /// 启动/回前台时重试全部待上传（快速备份 zip）
     static func retryPendingUploads(config: CosConfig? = nil) async {
         guard let config = config ?? CosConfig.load(), config.isValid else { return }
@@ -107,6 +108,7 @@ final class CloudBackupService {
         }
         await enforceCloudRetention(config: config)
     }
+#endif
 
     // MARK: - 上传
 
@@ -135,6 +137,7 @@ final class CloudBackupService {
         }
     }
 
+#if !APP_EXTENSION
     /// 全量备份媒体增量上传：按 media_manifest 的 sha1 判断是否已在云端（backups/media/<sha1>/<文件名>），
     /// 已存在跳过（省流量），否则从 zip 内提取上传。progress 0~1
     static func uploadFullMedia(zipURL: URL, config: CosConfig, progress: @escaping (Double) -> Void) async throws {
@@ -158,7 +161,9 @@ final class CloudBackupService {
         }
         progress(1.0)
     }
+#endif
 
+#if !APP_EXTENSION
     /// 自动上传快速备份（失败入队重试，成功后清理队列并执行云端保留）
     static func autoUploadFastBackup(zipURL: URL, config: CosConfig?) async {
         guard let config = config ?? CosConfig.load(), config.isValid else {
@@ -173,6 +178,7 @@ final class CloudBackupService {
         }
         await enforceCloudRetention(config: config)
     }
+#endif
 
     // MARK: - 存在探测 / 下载 / 删除
 
@@ -195,6 +201,7 @@ final class CloudBackupService {
     /// 下载云端备份 zip 到本地（流式 downloadTask），返回文件 URL
     /// v1.13 需求15：下载前先检查本地是否已有该备份（同名 zip 或 下载_ 前缀副本）→ 有则直接返回本地文件，不重复下载
     /// v1.13 需求12：下载完成后逐文件 CRC 核对（防损坏/不完整），失败删除临时文件并抛错
+#if !APP_EXTENSION
     /// v1.14 需求1：下载落盘直接使用云端原名（快速_/全量_ 前缀），不再加「下载_」前缀，
     ///              这样 app 备份列表能直接识别并显示下载下来的备份
     static func downloadBackup(name: String, config: CosConfig) async throws -> URL {
@@ -241,6 +248,7 @@ final class CloudBackupService {
         }
         return nil
     }
+#endif
 
     /// v1.13 需求7：实时刷新桶内备份清单并同步到本地权威记录。
     /// 以 COS ListObjects 为准重建 cloudRecords（剔除媒体镜像 backups/media/ 前缀）：

@@ -33,10 +33,23 @@ enum BackupLogStore {
         if cloud {
             CloudOps.log(category: category, action: action, result: result, detail: detail, room: room)
         }
-        var list = all()
         let name = username ?? CloudUser.username
-        list.insert(BackupLogEntry(date: Date(), category: category, action: action, result: result, detail: detail, checksum: checksum,
-                                   username: name.isEmpty ? nil : name, room: room.isEmpty ? nil : room), at: 0)
+        let entry = BackupLogEntry(date: Date(), category: category, action: action, result: result, detail: detail, checksum: checksum,
+                                   username: name.isEmpty ? nil : name, room: room.isEmpty ? nil : room)
+        // v2.68：扩展进程的本地日志写共享区待合并数组（扩展 standard 与主 App 隔离），
+        // 主 App 启动/回前台 mergeExtensionLogs 并入本机日志；云端日志两进程走同一共享队列。
+        if SharedBridge.isExtension {
+            let d = SharedBridge.defaults
+            var ext = (try? JSONDecoder().decode([BackupLogEntry].self, from: d.data(forKey: extPendingKey) ?? Data())) ?? []
+            ext.insert(entry, at: 0)
+            if ext.count > maxCount { ext = Array(ext.prefix(maxCount)) }
+            if let data = try? JSONEncoder().encode(ext) {
+                d.set(data, forKey: extPendingKey)
+            }
+            return
+        }
+        var list = all()
+        list.insert(entry, at: 0)
         // v1.13 需求8：超过保留天数的日志自动清理
         let cutoff = Calendar.current.date(byAdding: .day, value: -retentionDays, to: Date()) ?? Date()
         list = list.filter { $0.date >= cutoff }
@@ -44,6 +57,30 @@ enum BackupLogStore {
         if let data = try? JSONEncoder().encode(list) {
             UserDefaults.standard.set(data, forKey: key)
         }
+    }
+
+    /// v2.68：共享区扩展待合并日志键
+    private static let extPendingKey = "backupLogs.extPending"
+
+    /// v2.68：主 App 启动/回前台把分享扩展写的本地日志并入本机日志（按整条去重，幂等）。
+    static func mergeExtensionLogs() {
+        let d = SharedBridge.defaults
+        guard let data = d.data(forKey: extPendingKey),
+              let ext = try? JSONDecoder().decode([BackupLogEntry].self, from: data),
+              !ext.isEmpty else { return }
+        var list = all()
+        let known = Set(list)
+        for e in ext where !known.contains(e) {
+            list.append(e)
+        }
+        list.sort { $0.date > $1.date }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -retentionDays, to: Date()) ?? Date()
+        list = list.filter { $0.date >= cutoff }
+        if list.count > maxCount { list = Array(list.prefix(maxCount)) }
+        if let encoded = try? JSONEncoder().encode(list) {
+            UserDefaults.standard.set(encoded, forKey: key)
+        }
+        d.removeObject(forKey: extPendingKey)
     }
 
     /// v1.19：日志占用空间（字节），设置页展示用

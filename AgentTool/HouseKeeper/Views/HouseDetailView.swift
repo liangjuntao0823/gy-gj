@@ -1404,25 +1404,7 @@ struct HouseDetailView: View {
     }
 }
 
-// MARK: - 分享值类型（Task 内安全传递 + 分享缓存 JSON 编解码，不触碰 SwiftData 模型）
-
-struct ShareMediaFile: Hashable, Codable {
-    let name: String
-    let kind: String
-}
-
-struct ShareHouseInfo: Equatable, Codable {
-    let displayRoomNo: String
-    let towerLabel: String
-    let layout: String
-    let statusLabel: String
-    let priceText: String
-    let landlord: String
-    let password: String
-    let remark: String
-    let name: String?   // v1.21：分享名片姓名（设置页可编辑；Optional 兼容旧版缓存 JSON，缺失时按默认值渲染）
-    let phone: String?  // v1.21：分享名片电话
-}
+// MARK: - 分享值类型（v2.68 起搬至 ShareModels.swift，主 App 与分享扩展共用）
 
 // MARK: - 照片大图预览路由
 

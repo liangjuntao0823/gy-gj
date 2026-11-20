@@ -261,6 +261,8 @@ struct SettingsView: View {
                 set: { newValue in
                     compressOnShare = newValue
                     UserDefaults.standard.set(newValue, forKey: "compressOnShare")
+                    // v2.68：压缩开关即时镜像给分享扩展（与 App 内上传同口径）
+                    SharedBridge.defaults.set(newValue, forKey: SharedBridge.kCompress)
                 }
             )) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -1505,6 +1507,11 @@ struct VersionHistoryView: View {
     @State private var cloudFailed = false
     @State private var didLoadCloud = false
     let versions: [(version: String, date: String, changes: [String])] = [
+        ("v2.68", "2026-11-20", [
+            "新增：【相册共享菜单直接存房，不用打开 App】——系统相册选好照片/视频点共享，下方动作列表里多出「保存到公寓管家」（和「保存到美柚」并排）。点开是小面板：选已有房号追加媒体，或填房号+租金+房东新增房源；保存后媒体当场直传上云，账本、清单、公共日志、系统通知横幅与 App 内新增/编辑完全同一套代码同一口径（压缩开关也跟随设置页「压缩上传媒体」）",
+            "新增：【失败不丢文件】——个别媒体没传上去的，自动挂到主 App「同步任务中心」，打开 App 点重试即可；扩展里存的媒体主 App 能直接读取、补传、删除，房号改名也跟着迁移",
+            "说明：版本 2.68 / 198，其余功能与 v2.67 一致；本次只新增分享扩展与配套共享通道（App Group 配置镜像/共享队列/共享媒体读取），不改房源同步判定逻辑、单房账本记录规则和页面布局。首次使用请先打开一次 App 完成配置镜像",
+        ]),
         ("v2.67", "2026-11-19", [
             "修复：【另一台手机新增/改房，公共日志里查不到这条】——原来写公共日志是「发出去就不管」：网络一抖、App 切后台或云函数一时没响应，这条日志就直接丢掉，本机账本还在、云端日志却没有，别的设备看不到谁动过房。现在对齐电脑端做法：发完会等云端响应、核对状态码和返回结果，失败自动重试 2 次（退避 350ms/700ms）；几次都没上云的先存进本机待补队列，下次启动或回前台自动补推，补成功再从队列移除",
             "说明：版本 2.67 / 197，其余功能与 v2.66 一致；本次只改公共日志的上云可靠性（等待校验 + 重试 + 待补队列 + 启动/回前台补推），不改房源同步判定逻辑、单房账本记录规则和页面布局",

@@ -542,6 +542,9 @@ struct MainTabView: View {
             Task { await CloudBackupService.enforceCloudRetention() }
             // v2.67：补推上次没上云成功的公共操作日志
             Task { await CloudOps.flushPending() }
+            // v2.68：分享扩展配套——镜像非敏感配置进 App Group + 合并扩展写的本机日志
+            SharedBridge.writeMirrors()
+            BackupLogStore.mergeExtensionLogs()
             // 任务中心：启动迁移旧失败/旧队列，进行中残留转待处理；重试只允许手动点，不再自动补传
             if let houseModelContext {
                 TaskRetryPerformer.shared.bind(houseContext: houseModelContext)
@@ -580,6 +583,9 @@ struct MainTabView: View {
             Task { await CloudBackupService.retryPendingUploads() }
             // v2.67：回前台补推积压的公共日志
             Task { await CloudOps.flushPending() }
+            // v2.68：回前台刷新配置镜像 + 合并分享扩展写的本机日志
+            SharedBridge.writeMirrors()
+            BackupLogStore.mergeExtensionLogs()
             // 房源媒体不再自动补传：失败任务留在任务中心，由用户手动点重试
             // v2.45：回前台合并上传待同步账本
             Task {
@@ -597,6 +603,10 @@ struct MainTabView: View {
                 detectCloudLedgerChange()
             }
             WidgetDataSync.sync(modelContext: modelContext)
+        }
+        // v2.68：退后台（含唤起共享菜单前）刷新配置镜像，保证分享扩展读到最新用户名/地址/哈希/压缩开关
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            SharedBridge.writeMirrors()
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
             // v1.83：任何 ModelContext 保存（记账/房源/待办等）后才重建本地通知与小组件数据，替代原来的 30 秒轮询

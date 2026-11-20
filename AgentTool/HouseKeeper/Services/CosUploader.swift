@@ -151,7 +151,52 @@ struct CosConfig {
         let secretKey = (KeychainStore.load(KeychainKey.secretKey) ?? "").trimmingCharacters(in: trimSet)
         let customDomain = (KeychainStore.load(KeychainKey.customDomain) ?? "").trimmingCharacters(in: trimSet)
         let config = CosConfig(bucket: bucket, region: region, secretId: secretId, secretKey: secretKey, customDomain: customDomain)
-        return config.isValid ? config : nil
+        if config.isValid { return config }
+        // v2.68：扩展进程读不到主 App 钥匙串——用云函数取回、仅内存持有的配置
+        return extensionConfig
+    }
+
+    /// v2.68：分享扩展内存态 COS 配置（cosCfg 取回后赋值；绝不写钥匙串/UserDefaults/文件）
+    static var extensionConfig: CosConfig?
+
+    /// v2.68：分享扩展经云函数 cosCfg 取 COS 配置（k=hash 门禁，与后台同级信任）。
+    /// 密钥只在本进程内存停留，扩展退出即释放；客户端签名/传输代码零改动复用。
+    static func fetchForExtension() async throws -> CosConfig {
+        if let cached = extensionConfig, cached.isValid { return cached }
+        let base = CloudConfig.functionURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hash = SharedBridge.mirroredPasswordHash
+        guard !base.isEmpty, !hash.isEmpty,
+              var comp = URLComponents(string: base) else {
+            throw CosUploader.CosError.uploadFailed("分享配置未就绪：请先打开一次公寓管家并完成云端配置")
+        }
+        comp.queryItems = [.init(name: "act", value: "cosCfg"), .init(name: "k", value: hash)]
+        guard let url = comp.url else {
+            throw CosUploader.CosError.uploadFailed("云函数地址无效")
+        }
+        let (data, response) = try await CosNetwork.session.data(from: url)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw CosUploader.CosError.uploadFailed("取分享配置失败（口令或网络问题）")
+        }
+        struct Resp: Codable {
+            let ok: Bool
+            let bucket: String?
+            let region: String?
+            let secretId: String?
+            let secretKey: String?
+        }
+        let r = try JSONDecoder().decode(Resp.self, from: data)
+        let trimSet = CharacterSet.whitespacesAndNewlines
+        let bucket = (r.bucket ?? "").trimmingCharacters(in: trimSet)
+        let region = (r.region ?? "").trimmingCharacters(in: trimSet)
+        let sid = (r.secretId ?? "").trimmingCharacters(in: trimSet)
+        let skey = (r.secretKey ?? "").trimmingCharacters(in: trimSet)
+        guard r.ok, !bucket.isEmpty, !region.isEmpty, !sid.isEmpty, !skey.isEmpty else {
+            throw CosUploader.CosError.uploadFailed("分享配置响应无效")
+        }
+        let cfg = CosConfig(bucket: bucket, region: region, secretId: sid, secretKey: skey,
+                            customDomain: SharedBridge.mirroredCustomDomain)
+        extensionConfig = cfg
+        return cfg
     }
 }
 
@@ -2539,10 +2584,15 @@ enum WebCache {
     /// 清 App 内 WebView 缓存 + 更新版本戳
     static func clear(completion: (() -> Void)? = nil) {
         UserDefaults.standard.set("\(Int(Date().timeIntervalSince1970))", forKey: stampKey)
+        // v2.68：WKWebsiteDataStore 在 App Extension 不可用，扩展进程只更新版本戳
+        #if !APP_EXTENSION
         WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
                                                  modifiedSince: .distantPast) {
             DispatchQueue.main.async { completion?() }
         }
+        #else
+        DispatchQueue.main.async { completion?() }
+        #endif
     }
 }
 
@@ -2551,14 +2601,20 @@ enum CloudConfig {
     // 旧版默认地址仅供升级用户参考（若 UserDefaults 无值且钥匙串有旧值则读取兼容）。
     static var functionURL: String {
         get {
-            // 兼容：v1.39 及更早版本把地址存在 UserDefaults；v1.40 起统一存 UserDefaults（非敏感）。
+            // v2.68：共享区优先（分享扩展同地址）；兼容 standard 与 v1.39 钥匙串旧值。
+            SharedBridge.migrateKey("cloud.functionURL")
+            if let s = SharedBridge.defaults.string(forKey: "cloud.functionURL"), !s.isEmpty { return s }
             if let s = UserDefaults.standard.string(forKey: "cloud.functionURL"), !s.isEmpty { return s }
             if let s = KeychainStore.load("cloud.functionURL"), !s.isEmpty { return s }
             return ""
         }
-        set { UserDefaults.standard.set(newValue, forKey: "cloud.functionURL") }
+        set {
+            SharedBridge.defaults.set(newValue, forKey: "cloud.functionURL")
+            UserDefaults.standard.set(newValue, forKey: "cloud.functionURL")
+        }
     }
     static func clearFunctionURL() {
+        SharedBridge.defaults.removeObject(forKey: "cloud.functionURL")
         UserDefaults.standard.removeObject(forKey: "cloud.functionURL")
         _ = KeychainStore.save("", for: "cloud.functionURL")
     }
@@ -2576,6 +2632,8 @@ enum CloudConfig {
         set { _ = KeychainStore.save(newValue, for: KeychainKey.adminPassword) }
     }
     static var passwordHash: String {
+        // v2.68：扩展进程读不到主 App 钥匙串，用主 App 镜像的哈希（本就随请求 URL 传输，不扩大暴露面）
+        if SharedBridge.isExtension { return SharedBridge.mirroredPasswordHash }
         let data = Data(adminPassword.utf8)
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
@@ -2937,6 +2995,7 @@ struct WatermarkPreviewView: View {
     }
 }
 
+#if !APP_EXTENSION // v2.68：App 内管理后台 UI 依赖 CloudBackupService 全量/RemoteConfigAdminView/UIApplication，扩展不编译
 // MARK: - v1.36 App 内管理后台（首页快捷操作 → 管理后台）
 
 /// 云函数返回的获客统计
@@ -3595,6 +3654,7 @@ struct StatCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
+#endif // !APP_EXTENSION（管理后台 UI）
 
 // MARK: - v1.19 多用户（用户名）
 
@@ -3602,9 +3662,14 @@ struct StatCard: View {
 /// 房源共享走公共区 h/，不受用户名影响。
 enum CloudUser {
     private static let key = "cloud.username"
+    /// v2.68：用户名改存 App Group 共享区（分享扩展需同用户名署名/分目录）；
+    /// 升级时一次性把 standard 旧值迁进共享区，主 App 行为不变。
     static var username: String {
-        get { UserDefaults.standard.string(forKey: key) ?? "" }
-        set { UserDefaults.standard.set(newValue, forKey: key) }
+        get {
+            SharedBridge.migrateKey(key)
+            return SharedBridge.defaults.string(forKey: key) ?? ""
+        }
+        set { SharedBridge.defaults.set(newValue, forKey: key) }
     }
     /// v2.6：设备短标签（区分同账号多设备）——"iPhone"/"iPad"/"其他"
     static var deviceTag: String {
@@ -3677,15 +3742,18 @@ enum CloudOpPendingQueue {
     private static let maxCount = 100
     private static let retentionDays: Double = 45
 
+    /// v2.68：队列改存 App Group 共享区——分享扩展入队的日志，主 App 启动/回前台同一份补推。
+    /// 升级时把 standard 旧队列一次性迁进共享区（只补不覆盖）。
     static func items() -> [Item] {
-        guard let data = UserDefaults.standard.data(forKey: pendingKey),
+        SharedBridge.migrateKey(pendingKey)
+        guard let data = SharedBridge.defaults.data(forKey: pendingKey),
               let list = try? JSONDecoder().decode([Item].self, from: data) else { return [] }
         return list
     }
 
     private static func save(_ list: [Item]) {
         if let data = try? JSONEncoder().encode(list) {
-            UserDefaults.standard.set(data, forKey: pendingKey)
+            SharedBridge.defaults.set(data, forKey: pendingKey)
         }
     }
 

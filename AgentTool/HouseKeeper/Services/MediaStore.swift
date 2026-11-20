@@ -29,7 +29,21 @@ enum DataRoot {
 enum MediaStore {
     static let mediaDirectoryName = "media"
 
+    /// v2.68：分享扩展进程置 true——媒体落 App Group 共享容器，主 App 经 url(for:) 回退读取。
+    /// 主 App 恒 false，存量媒体仍在 Documents/media/，不迁移。
+    static var useSharedContainer = false
+
+    /// v2.68：App Group 共享媒体目录（扩展写入处；主 App 只读回退）
+    static var sharedMediaDirectory: URL? {
+        guard let container = SharedBridge.containerURL else { return nil }
+        let dir = container.appendingPathComponent(mediaDirectoryName, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
     static func mediaDirectory() -> URL {
+        // v2.68：扩展进程写共享容器；主 App 仍写 Documents/media/
+        if useSharedContainer, let shared = sharedMediaDirectory { return shared }
         // v1.40 第9点：媒体独立到 Documents/media/，与「备份」平级，不再挂在备份文件夹下
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let dir = docs.appendingPathComponent(mediaDirectoryName, isDirectory: true)
@@ -108,6 +122,11 @@ enum MediaStore {
         if FileManager.default.fileExists(atPath: legacyHouseURL.path) {
             return legacyHouseURL
         }
+        // v2.68：分享扩展落的文件在 App Group 共享容器（主进程 Documents 没有时回退读取）
+        if let sharedHouse = sharedMediaDirectory?.appendingPathComponent(roomKey, isDirectory: true).appendingPathComponent(fileName),
+           FileManager.default.fileExists(atPath: sharedHouse.path) {
+            return sharedHouse
+        }
         // v1.41：视频 .mov/.mp4 互换兜底——历史版本云端下载曾以 .mp4 落盘而账本记录 .mov（或相反），
         // 直接按原名找不到时用互换扩展名再试，保证「恢复备份后视频打不开」的旧数据仍能打开
         let ext = (fileName as NSString).pathExtension.lowercased()
@@ -120,6 +139,11 @@ enum MediaStore {
             let swappedLegacy = legacyMediaDirectory.appendingPathComponent(roomKey, isDirectory: true).appendingPathComponent(swapped)
             if FileManager.default.fileExists(atPath: swappedLegacy.path) {
                 return swappedLegacy
+            }
+            // v2.68：共享容器里的互换后缀同样兜底
+            if let swappedShared = sharedMediaDirectory?.appendingPathComponent(roomKey, isDirectory: true).appendingPathComponent(swapped),
+               FileManager.default.fileExists(atPath: swappedShared.path) {
+                return swappedShared
             }
         }
         // 旧版平铺目录（备份/Media/<文件名>；迁移后平铺文件已随目录一起进入 media/）
@@ -137,6 +161,10 @@ enum MediaStore {
         try? FileManager.default.removeItem(at: legacyHouseURL)
         let legacyURL = legacyMediaDirectory.appendingPathComponent(fileName)
         try? FileManager.default.removeItem(at: legacyURL)
+        // v2.68：分享扩展落在共享容器的同名文件一并清理（删媒体/删房不留残留）
+        if let sharedHouseURL = sharedMediaDirectory?.appendingPathComponent(roomKey, isDirectory: true).appendingPathComponent(fileName) {
+            try? FileManager.default.removeItem(at: sharedHouseURL)
+        }
     }
 
     /// 删除房源关联的全部媒体文件
@@ -153,6 +181,10 @@ enum MediaStore {
         // 1) 删除 Documents/备份/Media/<房号>/ 整个目录
         let dir = mediaDirectory().appendingPathComponent(roomKey, isDirectory: true)
         try? FileManager.default.removeItem(at: dir)
+        // v2.68：共享容器里该房号目录一并删除
+        if let sharedDir = sharedMediaDirectory?.appendingPathComponent(roomKey, isDirectory: true) {
+            try? FileManager.default.removeItem(at: sharedDir)
+        }
         // 2) 删除该房号分享缓存（<房号>_masked.json / <房号>_full.json / 旧版 <房号>.json）
         let cacheDir = DataRoot.url().appendingPathComponent("ShareCache", isDirectory: true)
         for suffix in ["_masked.json", "_full.json", ".json"] {
@@ -172,7 +204,15 @@ enum MediaStore {
         // v2.38（#38）：断点临时文件 .part 也不是成品媒体，一并排除，避免被当成媒体对账或误删。
         // v2.45：ledger.json 单套房账本同样排除，不能被当成多余媒体对账
         // v2.52：ledger.pending.json 待确认账本也排除，防止被误当媒体对账或误删
-        return Set(names.filter { $0 != "info.json" && $0 != "ledger.json" && $0 != "ledger.pending.json" && $0 != ".DS_Store" && !$0.hasSuffix(".part") })
+        let filter: (String) -> Bool = { $0 != "info.json" && $0 != "ledger.json" && $0 != "ledger.pending.json" && $0 != ".DS_Store" && !$0.hasSuffix(".part") }
+        var result = Set(names.filter(filter))
+        // v2.68：主 App 对账时把共享容器（分享扩展落的媒体）也算作「本地已有」，
+        // 避免把扩展刚传成功的媒体误判缺失而重复回补下载
+        if !useSharedContainer, let shared = sharedMediaDirectory {
+            let sharedNames = (try? FileManager.default.contentsOfDirectory(atPath: shared.appendingPathComponent(roomKey, isDirectory: true).path)) ?? []
+            result.formUnion(sharedNames.filter(filter))
+        }
+        return result
     }
 
     /// v1.37：按指定文件名写入媒体数据（云端同步回补用；已存在则覆盖），返回是否写入成功
@@ -253,6 +293,20 @@ enum MediaStore {
             )
         }
         try? FileManager.default.removeItem(at: oldDir)
+        // v2.68：共享容器里的旧房号目录同步迁移（扩展落的媒体跟着房号走）
+        if let shared = sharedMediaDirectory {
+            let oldShared = shared.appendingPathComponent(oldKey, isDirectory: true)
+            let newShared = shared.appendingPathComponent(newKey, isDirectory: true)
+            if FileManager.default.fileExists(atPath: oldShared.path) {
+                try? FileManager.default.createDirectory(at: newShared, withIntermediateDirectories: true)
+                let sharedContents = (try? FileManager.default.contentsOfDirectory(atPath: oldShared.path)) ?? []
+                for name in sharedContents {
+                    try? FileManager.default.moveItem(at: oldShared.appendingPathComponent(name),
+                                                      to: newShared.appendingPathComponent(name))
+                }
+                try? FileManager.default.removeItem(at: oldShared)
+            }
+        }
     }
 
     /// v1.71：存量无前缀目录归一迁移——把 media/<无前缀房号>/ 迁移到 media/<带前缀房号>/。
@@ -298,6 +352,8 @@ enum MediaStore {
 
     /// 把「媒体包 zip」解压到系统临时目录，识别出房号目录 key 列表。
     /// 兼容两种结构：zip 根 = 多个房号目录；zip 根 = 单个包裹目录（里面才是房号目录），自动下钻一层。
+    /// v2.68：依赖 ZipStore（仅主 App 编入），分享扩展不编译此函数。
+    #if !APP_EXTENSION
     static func extractMediaZipToTemp(url: URL) -> (tempRoot: URL, roomKeys: [String])? {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("BatchMedia_\(UUID().uuidString)", isDirectory: true)
@@ -317,6 +373,7 @@ enum MediaStore {
         }
         return (tempRoot, keys)
     }
+    #endif
 
 
     /// 把 zip 内某个房号目录的全部媒体文件复制到 Documents/media/<roomKey>/（zip 临时目录 → 正式目录），返回复制的文件名

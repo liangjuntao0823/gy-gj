@@ -14,15 +14,18 @@ enum HouseMediaUploadQueue {
 
     private static var pendingKey: String { "houseMediaPending.\(CloudUser.safeName)" }
 
+    /// v2.68：队列改存 App Group 共享区——分享扩展预登记/失败的媒体，
+    /// 主 App 启动时任务中心 bootstrap 同一份迁移走；升级时 standard 旧队列一次性迁入。
     static func pendingItems() -> [Item] {
-        guard let data = UserDefaults.standard.data(forKey: pendingKey),
+        SharedBridge.migrateKey(pendingKey)
+        guard let data = SharedBridge.defaults.data(forKey: pendingKey),
               let list = try? JSONDecoder().decode([Item].self, from: data) else { return [] }
         return list
     }
 
     private static func save(_ list: [Item]) {
         if let data = try? JSONEncoder().encode(list) {
-            UserDefaults.standard.set(data, forKey: pendingKey)
+            SharedBridge.defaults.set(data, forKey: pendingKey)
         }
     }
 
