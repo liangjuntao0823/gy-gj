@@ -33,9 +33,27 @@ enum BackupLogStore {
         if cloud {
             CloudOps.log(category: category, action: action, result: result, detail: detail, room: room)
         }
+        writeLocal(makeEntry(category: category, action: action, result: result, detail: detail,
+                             checksum: checksum, username: username, room: room))
+    }
+
+    /// v2.71：分享扩展可靠版——本地留痕同 log()，公共日志改「先入待补队→await 发送→成功出队」。
+    /// 扩展进程可能在发送途中被系统回收，fire-and-forget 会丢日志；入队在先则 App 启动/回前台必补推。
+    static func logAwait(category: String, action: String, result: String, detail: String = "", checksum: String = "", username: String? = nil, room: String = "", cloud: Bool = false) async {
+        writeLocal(makeEntry(category: category, action: action, result: result, detail: detail,
+                             checksum: checksum, username: username, room: room))
+        if cloud {
+            await CloudOps.logAwait(category: category, action: action, result: result, detail: detail, room: room)
+        }
+    }
+
+    private static func makeEntry(category: String, action: String, result: String, detail: String, checksum: String, username: String?, room: String) -> BackupLogEntry {
         let name = username ?? CloudUser.username
-        let entry = BackupLogEntry(date: Date(), category: category, action: action, result: result, detail: detail, checksum: checksum,
-                                   username: name.isEmpty ? nil : name, room: room.isEmpty ? nil : room)
+        return BackupLogEntry(date: Date(), category: category, action: action, result: result, detail: detail, checksum: checksum,
+                              username: name.isEmpty ? nil : name, room: room.isEmpty ? nil : room)
+    }
+
+    private static func writeLocal(_ entry: BackupLogEntry) {
         // v2.68：扩展进程的本地日志写共享区待合并数组（扩展 standard 与主 App 隔离），
         // 主 App 启动/回前台 mergeExtensionLogs 并入本机日志；云端日志两进程走同一共享队列。
         if SharedBridge.isExtension {

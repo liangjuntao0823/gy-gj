@@ -110,6 +110,9 @@ enum WTheme {
 struct MediumWidgetView: View {
     let entry: SimpleEntry
     var d: WidgetData { entry.data }
+    // v2.71：液态玻璃适配——主屏幕外观设为「透明/着色」时系统按 accented 渲染并提供玻璃底；
+    // 默认全彩外观系统不允许小组件真透明（WWDC25 session 278 / DTS 口径），改磨砂灰底告别纯白。
+    @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
         VStack(alignment: .center, spacing: 10) {
@@ -148,7 +151,17 @@ struct MediumWidgetView: View {
             }
         }
         .padding(14)
-        .containerBackground(.ultraThinMaterial, for: .widget)
+        .containerBackground(for: .widget) {
+            if renderingMode == .accented {
+                // 透明/着色外观：交还系统，由系统铺与桌面文件夹同质的液态玻璃
+                Color.clear
+            } else if #available(iOS 26.0, *) {
+                // 默认全彩外观：磨砂玻璃灰（regularMaterial），不再是纯白卡纸
+                Rectangle().fill(.regularMaterial)
+            } else {
+                Rectangle().fill(.ultraThinMaterial)
+            }
+        }
         // v2.51：点组件直接全屏出电梯码（不再回 App 首页）
         .widgetURL(URL(string: "gongyuguanjia://elevator"))
     }

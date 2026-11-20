@@ -2608,6 +2608,9 @@ enum CloudConfig {
             if let s = SharedBridge.defaults.string(forKey: "cloud.functionURL"), !s.isEmpty { return s }
             if let s = UserDefaults.standard.string(forKey: "cloud.functionURL"), !s.isEmpty { return s }
             if let s = KeychainStore.load("cloud.functionURL"), !s.isEmpty { return s }
+            // v2.71：扩展镜像未写（覆盖安装后主 App 没启动过）时用默认地址兜底——
+            // 否则 CloudOps.isConfigured 判未配置，分享新增/补传的公共日志静默不上云
+            if SharedBridge.isExtension { return SharedBridge.fallbackFunctionURL }
             return ""
         }
         set {
@@ -3835,6 +3838,19 @@ enum CloudOps {
             }
         }
         return false
+    }
+
+    /// v2.71：分享扩展可靠公共日志——先入共享区待补队再发送、成功才出队。
+    /// 扩展进程可能在发送途中被系统回收：fire-and-forget 会丢日志，
+    /// 入队在先则 App 启动/回前台 flushPending 必补推，与 v2.67 主 App 口径一致。
+    static func logAwait(category: String, action: String, result: String, detail: String = "", room: String = "") async {
+        guard isConfigured, baseURL != nil else { return }
+        let item = CloudOpPendingQueue.Item(
+            category: category, action: action, result: result,
+            detail: detail, room: room, uname: CloudUser.username, date: Date())
+        CloudOpPendingQueue.enqueue(item)
+        let ok = await send(item)
+        if ok { CloudOpPendingQueue.remove(item) }
     }
 
     /// 启动/回前台补推积压的待上云日志；成功出队，仍失败留队等下次。串行发送，避免同时打云函数。

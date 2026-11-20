@@ -545,6 +545,15 @@ struct MainTabView: View {
             // v2.68：分享扩展配套——镜像非敏感配置进 App Group + 合并扩展写的本机日志
             SharedBridge.writeMirrors()
             BackupLogStore.mergeExtensionLogs()
+            // v2.71：收养分享扩展「本地待写账」——建/并房源实体、媒体搬进 Documents、
+            // 写镜像与账本基线、失败挂任务中心；须在 bootstrap 前完成，重试绑定才看得到新房
+            if let ctx = houseModelContext {
+                let adopted = ShareLocalInbox.adoptAll(houseContext: ctx)
+                if adopted > 0 {
+                    BackupLogStore.log(category: "房源", action: "分享入库收养", result: "成功",
+                                       detail: "并入 \(adopted) 条分享扩展入库记录")
+                }
+            }
             // 任务中心：启动迁移旧失败/旧队列，进行中残留转待处理；重试只允许手动点，不再自动补传
             if let houseModelContext {
                 TaskRetryPerformer.shared.bind(houseContext: houseModelContext)
@@ -586,6 +595,14 @@ struct MainTabView: View {
             // v2.68：回前台刷新配置镜像 + 合并分享扩展写的本机日志
             SharedBridge.writeMirrors()
             BackupLogStore.mergeExtensionLogs()
+            // v2.71：回前台同样收养分享待写账（分享完切回 App 即见新房，不用重启）
+            if let ctx = houseModelContext {
+                let adopted = ShareLocalInbox.adoptAll(houseContext: ctx)
+                if adopted > 0 {
+                    BackupLogStore.log(category: "房源", action: "分享入库收养", result: "成功",
+                                       detail: "并入 \(adopted) 条分享扩展入库记录")
+                }
+            }
             // 房源媒体不再自动补传：失败任务留在任务中心，由用户手动点重试
             // v2.45：回前台合并上传待同步账本
             Task {
