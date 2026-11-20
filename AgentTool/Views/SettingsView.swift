@@ -1507,6 +1507,10 @@ struct VersionHistoryView: View {
     @State private var cloudFailed = false
     @State private var didLoadCloud = false
     let versions: [(version: String, date: String, changes: [String])] = [
+        ("v2.70", "2026-11-20", [
+            "修复：【共享面板报「分享配置未就绪：请先打开一次公寓管家」】——覆盖安装后主 App 没启动过时，共享区镜像还没写，扩展拿不到云函数地址/口令哈希。现扩展内置与 App 默认口径同源的兜底地址/哈希，镜像缺失自动兜底、有镜像仍优先镜像，不再要求先开一次 App；用户名署名仍随镜像，开一次 App 后恢复你的署名",
+            "说明：版本 2.70 / 200，其余功能与 v2.69 一致；上传/账本/日志/通知口径不变",
+        ]),
         ("v2.69", "2026-11-20", [
             "修复：【共享菜单下方动作列表没有「保存到公寓管家」】——v2.68 把扩展注册成了 Share Extension（只进上方 App 排）；下方动作列表（和「保存到美柚」并排那排）只认 Action Extension。现改为 Action Extension（com.apple.ui-services），入口落在下方动作列表，并可在「编辑操作」里开关/排序；补上扩展图标；激活规则改字典式（图片/视频各最多 50 个）",
             "说明：版本 2.69 / 199，其余功能与 v2.68 一致；选房面板、媒体入库、直传上云、账本/日志/通知口径全部不变。装好后若列表里仍没看到，重启一次手机再开共享菜单（系统扩展注册缓存）",

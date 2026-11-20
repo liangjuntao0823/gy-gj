@@ -39,7 +39,16 @@ enum SharedBridge {
         d.set(CosConfig.load()?.customDomain ?? "", forKey: kCustomDomain)
     }
 
-    static var mirroredPasswordHash: String { defaults.string(forKey: kPasswordHash) ?? "" }
+    /// v2.70 兜底：覆盖安装后主 App 尚未启动、镜像还没写时，扩展用与 App 默认口径同源的
+    /// 默认云函数地址/默认口令哈希（口令默认值本就在 App 代码内，哈希本就随 k= 参数传输，
+    /// 不扩大暴露面）。镜像一旦有值立即优先镜像，用户改过地址/口令后不受兜底影响。
+    static let fallbackFunctionURL = "https://1511251056-csopw5c0jd.ap-hongkong.tencentscf.com"
+    static let fallbackPasswordHash = "615ed7fb1504b0c724a296d7a69e6c7b2f9ea2c57c1d8206c5afdf392ebdfd25"
+
+    static var mirroredPasswordHash: String {
+        let s = defaults.string(forKey: kPasswordHash) ?? ""
+        return s.isEmpty ? fallbackPasswordHash : s
+    }
 
     /// 扩展读压缩开关：镜像优先；未镜像过按远程配置默认（与 App 内 shareCompressionEnabled 同口径）
     static var mirroredCompress: Bool {

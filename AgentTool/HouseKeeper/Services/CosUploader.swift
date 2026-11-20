@@ -163,7 +163,9 @@ struct CosConfig {
     /// 密钥只在本进程内存停留，扩展退出即释放；客户端签名/传输代码零改动复用。
     static func fetchForExtension() async throws -> CosConfig {
         if let cached = extensionConfig, cached.isValid { return cached }
-        let base = CloudConfig.functionURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        var base = CloudConfig.functionURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        // v2.70：镜像未写（覆盖安装后主 App 没启动过）时用默认地址兜底，不再阻塞分享
+        if base.isEmpty { base = SharedBridge.fallbackFunctionURL }
         let hash = SharedBridge.mirroredPasswordHash
         guard !base.isEmpty, !hash.isEmpty,
               var comp = URLComponents(string: base) else {
