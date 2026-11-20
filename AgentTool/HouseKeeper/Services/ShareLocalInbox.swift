@@ -133,7 +133,7 @@ enum ShareLocalInbox {
                 try? FileManager.default.removeItem(at: ledgerURL)
             }
             HouseLedgerStore.adoptSharedPending(roomKey: rk)
-            if !entry.ledgerSynced { HouseLedgerStore.markDirty(roomKey: rk) }
+            if !entry.ledgerSynced { HouseLedgerStore.markDirty(rk) }
 
             // 5) 失败口径与 App 内一致：账本推送失败标 SyncFail（任务中心挂推送任务）、
             //    清旧删云失败挂 mediaDelete 待重试
